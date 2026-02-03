@@ -1,311 +1,81 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Liberdade Financeira • Educação Financeira</title>
-  <meta name="description" content="Liberdade Financeira: educação financeira prática, organizada e aplicada no dia a dia." />
-
-  <style>
-    :root{
-      --bg:#070b12;
-      --bg2:#0f1c2e;
-      --card:#0f1726;
-      --line:rgba(255,255,255,.08);
-      --text:#e7eefc;
-      --muted:#aab3c5;
-      --accent:#24ff8a;
-      --accent2:#4ef1c3;
-      --danger:#ff4d4d;
-      --shadow:0 14px 30px rgba(0,0,0,.35);
-      --radius:18px;
-      --max:1080px;
-    }
-
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--text);
-      background: radial-gradient(1200px 600px at 20% 10%, rgba(78,241,195,.12), transparent 60%),
-                  radial-gradient(1200px 600px at 80% 30%, rgba(36,255,138,.10), transparent 55%),
-                  linear-gradient(180deg, var(--bg), var(--bg2));
-    }
-
-    a{ color:inherit; text-decoration:none; }
-    .wrap{ max-width:var(--max); margin:0 auto; padding:24px; }
-
-    /* Header */
-    header{
-      position: sticky;
-      top: 0;
-      backdrop-filter: blur(10px);
-      background: rgba(7,11,18,.55);
-      border-bottom: 1px solid var(--line);
-      z-index: 10;
-    }
-    .topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:14px 0;
-    }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-weight:800;
-      letter-spacing:.2px;
-    }
-    .logo{
-      width:34px;
-      height:34px;
-      border-radius:12px;
-      background:
-        radial-gradient(14px 14px at 30% 30%, rgba(78,241,195,.9), transparent 60%),
-        radial-gradient(14px 14px at 70% 70%, rgba(36,255,138,.9), transparent 60%),
-        linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
-      border:1px solid var(--line);
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-    }
-
-    nav{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      padding:10px 14px;
-      border-radius:14px;
-      border:1px solid var(--line);
-      background: rgba(255,255,255,.03);
-      color:var(--text);
-      font-weight:700;
-      cursor:pointer;
-      transition: transform .08s ease, background .15s ease, border-color .15s ease;
-      user-select:none;
-      white-space:nowrap;
-    }
-    .btn:hover{ background: rgba(255,255,255,.06); border-color: rgba(78,241,195,.35); }
-    .btn:active{ transform: translateY(1px); }
-    .btn.primary{
-      border-color: rgba(36,255,138,.45);
-      background: linear-gradient(180deg, rgba(36,255,138,.18), rgba(36,255,138,.06));
-      box-shadow: 0 12px 28px rgba(36,255,138,.10);
-    }
-    .btn.primary:hover{
-      border-color: rgba(36,255,138,.70);
-      background: linear-gradient(180deg, rgba(36,255,138,.22), rgba(36,255,138,.08));
-    }
-
-    /* Hero */
-    .hero{
-      padding:42px 0 18px;
-      display:grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap:18px;
-      align-items:stretch;
-    }
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-    }
-    .heroMain{ padding:26px; }
-    .kicker{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      font-weight:800;
-      font-size:12px;
-      letter-spacing:.6px;
-      text-transform:uppercase;
-      color: var(--accent2);
-      padding:8px 12px;
-      border-radius:999px;
-      border:1px solid rgba(78,241,195,.25);
-      background: rgba(78,241,195,.06);
-    }
-    h1{
-      margin:14px 0 10px;
-      font-size: clamp(28px, 4vw, 44px);
-      line-height:1.08;
-      letter-spacing:-.6px;
-    }
-    .sub{
-      margin:0;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.6;
-      max-width: 58ch;
-    }
-    .ctaRow{
-      margin-top:18px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .note{
-      margin-top:14px;
-      color: rgba(231,238,252,.70);
-      font-size: 12px;
-      line-height:1.45;
-    }
-    .note strong{ color: var(--text); }
-
-    .heroSide{ padding:18px; display:flex; flex-direction:column; gap:12px; }
-    .mini{
-      padding:14px;
-      border-radius: 16px;
-      border:1px solid var(--line);
-      background: rgba(0,0,0,.18);
-    }
-    .mini h3{ margin:0 0 6px; font-size:14px; }
-    .mini p{ margin:0; color:var(--muted); font-size:13px; line-height:1.5; }
-    .pillRow{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
-    .pill{
-      font-size:12px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.03);
-      color: rgba(231,238,252,.80);
-    }
-
-    /* Features */
-    .section{ padding:18px 0; }
-    .grid{
-      display:grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap:14px;
-    }
-    .feat{ padding:18px; }
-    .feat h3{ margin:0 0 8px; font-size:15px; }
-    .feat p{ margin:0; color:var(--muted); font-size:13px; line-height:1.55; }
-
-    /* Footer */
-    footer{
-      margin-top:18px;
-      border-top:1px solid var(--line);
-      padding:18px 0 28px;
-      color: rgba(231,238,252,.65);
-      font-size: 12px;
-    }
-
-    /* Responsive */
-    @media (max-width: 920px){
-      .hero{ grid-template-columns: 1fr; }
-      .grid{ grid-template-columns: 1fr; }
-    }
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Liberdade Financeira</title>
+  <link rel="stylesheet" href="/assets/app.css"/>
 </head>
-
 <body>
-  <header>
-    <div class="wrap">
-      <div class="topbar">
-        <div class="brand" aria-label="Liberdade Financeira">
-          <div class="logo" aria-hidden="true"></div>
-          <div>Liberdade Financeira</div>
-        </div>
-
-        <nav aria-label="Navegação principal">
-          <a class="btn" href="#conteudo">Conteúdo</a>
-          <a class="btn" href="#como-funciona">Como funciona</a>
-          <a class="btn" href="./login.html">Entrar</a>
-          <a class="btn primary" href="./assinatura.html">Assinar</a>
-        </nav>
+  <div class="container">
+    <div class="card topbar">
+      <div class="brand"><span class="dot"></span> Liberdade Financeira</div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <a class="badge" href="/dashboard-conteudo.html">Conteúdo</a>
+        <a class="badge" href="/assinatura.html">Assinar</a>
+        <a class="badge" href="/login.html">Entrar</a>
       </div>
     </div>
-  </header>
 
-  <main class="wrap">
-    <section class="hero" aria-label="Apresentação">
-      <div class="card heroMain">
-        <div class="kicker">Educação financeira • prática • aplicada</div>
-        <h1>Organize seu dinheiro com método — e sem complicação.</h1>
-        <p class="sub">
-          Um sistema simples para aprender, aplicar e evoluir: fundamentos, hábitos, orçamento,
-          dívidas, reserva, investimentos e estratégia — tudo em textos claros e estruturados.
+    <div style="height:16px"></div>
+
+    <div class="grid" style="grid-template-columns: 1.2fr .8fr;">
+      <div class="card section">
+        <div class="badge">EDUCAÇÃO FINANCEIRA • PRÁTICA • APLICADA</div>
+        <h1 style="margin:14px 0 8px; font-size:52px; line-height:1.02;">Organize seu dinheiro<br/>com método — e sem complicação.</h1>
+        <p class="muted" style="font-size:16px; line-height:1.6;">
+          Um sistema simples para aprender, aplicar e evoluir: fundamentos, hábitos, orçamento, dívidas, reserva,
+          investimentos e estratégia — tudo em textos claros e estruturados.
         </p>
-
-        <div class="ctaRow">
-          <a class="btn primary" href="./assinatura.html">Ver assinatura (visual)</a>
-          <a class="btn" href="./login.html">Ir para login</a>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:18px;">
+          <a class="btn" href="/assinatura.html">Ver assinatura (visual)</a>
+          <a class="btn ghost" href="/login.html">Ir para login</a>
         </div>
-
-        <p class="note">
-          <strong>Status do projeto:</strong> fase de estrutura (sem pagamento / sem deploy).
-          Esta página é a base pública para validar layout e navegação.
+        <p class="muted small" style="margin-top:16px;">
+          Status do projeto: fase de estrutura (sem pagamento). Esta página valida layout e navegação.
         </p>
       </div>
 
-      <div class="card heroSide" aria-label="Destaques">
-        <div class="mini">
-          <h3>✅ O que você vai encontrar</h3>
-          <p>Textos curtos, objetivos e organizados por trilhas. Conteúdo pensado para tradução futura.</p>
-          <div class="pillRow">
-            <span class="pill">Orçamento</span>
-            <span class="pill">Dívidas</span>
-            <span class="pill">Reserva</span>
-            <span class="pill">Investimentos</span>
+      <div class="grid">
+        <div class="card section">
+          <div class="badge">✅ O que você vai encontrar</div>
+          <p class="muted">Textos curtos, objetivos e organizados por trilhas. Conteúdo pensado para tradução futura.</p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <span class="badge">Orçamento</span>
+            <span class="badge">Dívidas</span>
+            <span class="badge">Reserva</span>
+            <span class="badge">Investimentos</span>
           </div>
         </div>
 
-        <div class="mini">
-          <h3>🧭 Próximos passos</h3>
-          <p>Login → Assinatura (visual) → Dashboard → Área de afiliado. Backend básico depois.</p>
+        <div class="card section">
+          <div class="badge">🧭 Próximos passos</div>
+          <p class="muted small">
+            Login → Assinatura → Dashboard → Área de afiliado.<br/>
+            Pagamento entra só depois de tudo blindado.
+          </p>
         </div>
 
-        <div class="mini">
-          <h3>🔒 Sem CNPJ, sem intermediários agora</h3>
-          <p>Pagamento e integração futura serão tratados depois. Agora: estrutura front/back bem feita.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="conteudo" aria-label="Conteúdo">
-      <div class="grid">
-        <div class="card feat">
-          <h3>Trilhas por objetivo</h3>
-          <p>Comece do zero ou avance direto ao ponto: sair do vermelho, organizar e investir.</p>
-        </div>
-        <div class="card feat">
-          <h3>Conteúdo em texto</h3>
-          <p>Leitura rápida, fácil de manter e perfeito para tradução, SEO e acessibilidade.</p>
-        </div>
-        <div class="card feat">
-          <h3>Ambiente do aluno</h3>
-          <p>Dashboard com progresso, biblioteca e área do afiliado para indicações e acompanhamento.</p>
+        <div class="card section">
+          <div class="badge">🔒 Sem CNPJ, sem intermediários agora</div>
+          <p class="muted small">
+            Estrutura front/back bem feita primeiro. Depois vem integração de pagamento.
+          </p>
         </div>
       </div>
-    </section>
+    </div>
 
-    <section class="section" id="como-funciona" aria-label="Como funciona">
-      <div class="card" style="padding:18px;">
-        <h3 style="margin:0 0 8px; font-size:15px;">Como vai funcionar (visão geral)</h3>
-        <p style="margin:0; color:var(--muted); font-size:13px; line-height:1.6;">
-          Você acessa a página pública, cria/entra na conta, visualiza a assinatura (por enquanto apenas visual),
-          e depois entra no dashboard. A área de afiliado mostra seu link, status e indicações.
-          A parte de pagamento e integração com blockchain será adicionada em uma etapa futura, sem mexer
-          no que já estiver pronto.
-        </p>
-      </div>
-    </section>
+    <div style="height:18px"></div>
 
-    <footer>
-      <div>
-        © <span id="year"></span> Liberdade Financeira • Projeto em construção
-      </div>
-    </footer>
-  </main>
+    <div class="card section">
+      <div class="badge">Como vai funcionar (visão geral)</div>
+      <p class="muted small">
+        Você acessa a página pública, cria/entra na conta, visualiza a assinatura (por enquanto apenas visual), e depois entra no dashboard.
+        A área de afiliado mostra seu link e seus indicados. A parte de pagamento será adicionada em etapa futura, sem mexer no que já estiver pronto.
+      </p>
+    </div>
 
-  <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
-  </script>
+    <p class="muted small" style="margin-top:16px;">© 2026 Liberdade Financeira • Projeto em construção</p>
+  </div>
 </body>
 </html>
