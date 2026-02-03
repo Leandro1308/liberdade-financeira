@@ -35,6 +35,8 @@
       background: rgba(0,0,0,.35);
       border-right:1px solid var(--line);
       padding:20px;
+      display:flex;
+      flex-direction:column;
     }
 
     .brand{
@@ -64,6 +66,7 @@
       text-decoration:none;
       font-weight:700;
       margin-bottom:6px;
+      border:1px solid transparent;
     }
 
     nav a.active,
@@ -102,19 +105,47 @@
       margin-top:14px;
       font-size:14px;
       line-height:1.6;
+      padding:14px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.25);
     }
 
     .info strong{
       display:block;
-      color:var(--text);
+      color:rgba(231,238,252,.95);
       margin-bottom:4px;
     }
 
-    .note{
-      margin-top:14px;
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.22);
       font-size:12px;
-      color:var(--muted);
+      font-weight:800;
+      margin-top:12px;
     }
+
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      background: rgba(255,255,255,.25);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .dot.ok{ background: rgba(36,255,138,.85); }
+    .dot.off{ background: rgba(255,77,77,.80); }
+
+    .logout{
+      margin-top:auto;
+      font-size:13px;
+      color:var(--muted);
+      text-decoration:none;
+      text-align:center;
+    }
+    .logout:hover{ text-decoration:underline; }
 
     @media (max-width: 900px){
       aside{ display:none; }
@@ -137,35 +168,85 @@
       <a href="./dashboard-afiliado.html">Área de afiliado</a>
       <a href="./dashboard-conta.html" class="active">Minha conta</a>
     </nav>
+
+    <a id="logoutLink" class="logout" href="./index.html">Sair</a>
   </aside>
 
   <main>
     <div class="card">
       <h1>Minha conta</h1>
-      <p>
-        Informações básicas da sua conta no sistema.
-      </p>
+      <p>Informações básicas da sua conta no sistema.</p>
 
-      <div class="info">
-        <strong>E-mail</strong>
-        usuario@email.com
+      <div class="badge">
+        <span id="subDot" class="dot"></span>
+        Assinatura: <span id="subStatus">carregando…</span>
       </div>
 
       <div class="info">
-        <strong>Status da assinatura</strong>
-        Ativa (simulação)
+        <strong>E-mail</strong>
+        <span id="userEmail">carregando…</span>
       </div>
 
       <div class="info">
         <strong>Membro desde</strong>
-        Janeiro de 2026
+        <span id="memberSince">—</span>
       </div>
 
-      <div class="note">
-        Em breve você poderá atualizar seus dados e gerenciar sua assinatura por aqui.
+      <div class="info">
+        <strong>Plano</strong>
+        <span id="subPlan">—</span>
       </div>
+
+      <div class="info">
+        <strong>Valor</strong>
+        <span id="subPrice">—</span>
+      </div>
+
+      <p class="muted" style="margin-top:14px;">
+        Em breve você poderá atualizar seus dados e gerenciar sua assinatura por aqui.
+      </p>
     </div>
   </main>
 
+  <script src="./app.js"></script>
+  <script>
+    if (!LF.requireAuth()) {}
+    LF.attachLogout("#logoutLink");
+
+    function formatMonthYear(iso){
+      try {
+        const d = new Date(iso);
+        const m = d.toLocaleString("pt-BR", { month: "long" });
+        const y = d.getFullYear();
+        return m.charAt(0).toUpperCase() + m.slice(1) + " de " + y;
+      } catch {
+        return "—";
+      }
+    }
+
+    async function loadUser(){
+      const u = await LF.apiFetch("/api/users/me");
+      LF.setText("userEmail", u?.email || "—");
+      LF.setText("memberSince", u?.createdAt ? formatMonthYear(u.createdAt) : "—");
+    }
+
+    async function loadSub(){
+      const sub = await LF.apiFetch("/api/assinatura/status");
+      const status = (sub?.status || "inactive").toLowerCase();
+
+      LF.setText("subStatus", status === "active" ? "ativa" : "inativa");
+      LF.setText("subPlan", sub?.plan || "monthly");
+      LF.setText("subPrice", sub?.price || "1 USDT / mês");
+
+      const dot = document.getElementById("subDot");
+      dot.classList.remove("ok","off");
+      dot.classList.add(status === "active" ? "ok" : "off");
+    }
+
+    Promise.all([loadUser(), loadSub()]).catch(() => {
+      LF.setText("userEmail", "erro ao carregar");
+      LF.setText("subStatus", "erro ao carregar");
+    });
+  </script>
 </body>
 </html>
