@@ -1,40 +1,30 @@
-/* backend/src/server.js */
-const express = require("express");
-const path = require("path");
+import http from "http";
+import { app } from "./app.js";
+import { connectMongo } from "./db/mongo.js";
+import { env } from "./config/env.js";
+import { logger } from "./utils/logger.js";
 
-const app = express();
+async function start() {
+  await connectMongo();
 
-// ---- Middlewares básicos
-app.use(express.json({ limit: "1mb" }));
+  const server = http.createServer(app);
 
-// ---- Health check (Render / Cloudflare)
-app.get("/health", (req, res) => {
-  return res.status(200).json({ message: "API Liberdade Financeira online" });
-});
+  server.listen(env.PORT, () => {
+    logger.info(`🚀 Server online na porta ${env.PORT}`);
+  });
 
-// ---- Servir o FRONTEND (pasta ../frontend)
-const frontendDir = path.join(__dirname, "..", "..", "frontend");
-app.use(express.static(frontendDir, { extensions: ["html"] }));
+  // Encerramento seguro
+  process.on("SIGTERM", () => {
+    logger.warn("SIGTERM recebido. Encerrando...");
+    server.close(() => process.exit(0));
+  });
+  process.on("SIGINT", () => {
+    logger.warn("SIGINT recebido. Encerrando...");
+    server.close(() => process.exit(0));
+  });
+}
 
-// Se alguém abrir "/", manda para o index.html
-app.get("/", (req, res) => {
-  return res.sendFile(path.join(frontendDir, "index.html"));
-});
-
-// Fallback: qualquer rota que não seja /api... tenta cair no frontend (SPA friendly)
-app.get(/^\/(?!api\/).*/, (req, res) => {
-  // Se a pessoa pedir /login.html, /dashboard.html etc, o express.static já resolve.
-  // Aqui é só um fallback para rotas “sem .html”
-  return res.sendFile(path.join(frontendDir, "index.html"));
-});
-
-// ---- 404 final (para rotas /api que não existirem)
-app.use("/api", (req, res) => {
-  return res.status(404).json({ error: "Not Found" });
-});
-
-// ---- Start
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`[LF] Backend rodando na porta ${PORT}`);
+start().catch((err) => {
+  logger.error("Falha ao iniciar servidor:", err);
+  process.exit(1);
 });
