@@ -1,161 +1,87 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Assinatura • Liberdade Financeira</title>
-
-  <style>
-    :root{
-      --bg:#070b12;
-      --bg2:#0f1c2e;
-      --card:#0f1726;
-      --line:rgba(255,255,255,.08);
-      --text:#e7eefc;
-      --muted:#aab3c5;
-      --accent:#24ff8a;
-      --accent2:#4ef1c3;
-      --shadow:0 14px 30px rgba(0,0,0,.35);
-      --radius:18px;
-      --max:520px;
-    }
-
-    *{ box-sizing:border-box; }
-    body{
-      margin:0;
-      min-height:100vh;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--text);
-      background: linear-gradient(180deg, var(--bg), var(--bg2));
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:24px;
-    }
-
-    a{ color:var(--accent2); text-decoration:none; }
-    a:hover{ text-decoration:underline; }
-
-    .card{
-      width:100%;
-      max-width:var(--max);
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding:28px;
-    }
-
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-weight:800;
-      font-size:18px;
-      margin-bottom:18px;
-    }
-
-    .logo{
-      width:34px;
-      height:34px;
-      border-radius:12px;
-      background:
-        radial-gradient(14px 14px at 30% 30%, rgba(78,241,195,.9), transparent 60%),
-        radial-gradient(14px 14px at 70% 70%, rgba(36,255,138,.9), transparent 60%),
-        linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
-      border:1px solid var(--line);
-    }
-
-    h1{
-      margin:0 0 10px;
-      font-size:22px;
-    }
-
-    .price{
-      font-size:34px;
-      font-weight:900;
-      margin:10px 0 6px;
-      color:var(--accent);
-    }
-
-    .period{
-      font-size:13px;
-      color:var(--muted);
-      margin-bottom:16px;
-    }
-
-    ul{
-      padding-left:18px;
-      margin:0 0 20px;
-      color:rgba(231,238,252,.85);
-      font-size:14px;
-      line-height:1.6;
-    }
-
-    li{ margin-bottom:6px; }
-
-    .btn{
-      width:100%;
-      padding:14px;
-      border-radius:14px;
-      border:1px solid rgba(36,255,138,.45);
-      background: linear-gradient(180deg, rgba(36,255,138,.18), rgba(36,255,138,.06));
-      color:var(--text);
-      font-weight:900;
-      cursor:pointer;
-      text-align:center;
-    }
-
-    .btn:hover{
-      border-color: rgba(36,255,138,.70);
-    }
-
-    .note{
-      margin-top:14px;
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.5;
-    }
-
-    .back{
-      display:block;
-      margin-top:16px;
-      text-align:center;
-      font-size:13px;
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/app.css"/>
 </head>
-
 <body>
-  <div class="card">
-    <div class="brand">
-      <div class="logo"></div>
-      Liberdade Financeira
+  <div class="container">
+    <div class="card topbar">
+      <div class="brand"><span class="dot"></span> Liberdade Financeira</div>
+      <div style="display:flex; gap:10px;">
+        <a class="badge" href="/index.html">Início</a>
+        <a class="badge" href="/login.html">Entrar</a>
+        <a class="badge" href="/dashboard.html">Dashboard</a>
+      </div>
     </div>
 
-    <h1>Assinatura mensal</h1>
+    <div style="height:16px"></div>
 
-    <div class="price">1 USDT</div>
-    <div class="period">por mês</div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr;">
+      <div class="card section">
+        <h2 style="margin:0 0 8px;">Plano Mensal</h2>
+        <p class="muted" style="margin:0 0 14px;">
+          Acesso completo ao conteúdo + dashboard + área de afiliado.
+        </p>
+        <div class="badge">R$ — (pagamento entra depois)</div>
 
-    <ul>
-      <li>Acesso completo ao conteúdo de educação financeira</li>
-      <li>Dashboard do usuário</li>
-      <li>Área de afiliado com link próprio</li>
-      <li>Acompanhamento de indicações</li>
-      <li>Atualizações contínuas do conteúdo</li>
-    </ul>
+        <div style="height:14px"></div>
 
-    <div class="btn">
-      Continuar (pagamento em breve)
+        <button id="mockActivate" class="btn primary">Ativar acesso (modo teste)</button>
+        <p class="muted small" style="margin-top:10px;">
+          Isso é apenas para validação do fluxo (sem cobrança). Quando integrar pagamento,
+          este botão será removido e a ativação virá do webhook do gateway.
+        </p>
+      </div>
+
+      <div class="card section">
+        <h2 style="margin:0 0 8px;">Status da sua conta</h2>
+        <div id="status" class="muted">Carregando…</div>
+        <div style="height:12px"></div>
+
+        <a class="btn" href="/dashboard.html">Ir para dashboard</a>
+      </div>
     </div>
 
-    <div class="note">
-      Esta é uma visualização da assinatura.  
-      O sistema de pagamento será integrado em uma etapa futura.
-    </div>
-
-    <a class="back" href="./index.html">← Voltar para página inicial</a>
+    <div id="toast" class="toast"><div class="msg"></div></div>
   </div>
+
+  <script type="module">
+    import { me, activateMock, requireLogged } from "/assets/auth.js";
+    import { toast } from "/assets/ui.js";
+
+    const token = requireLogged();
+    const status = document.getElementById("status");
+
+    async function load(){
+      try{
+        const data = await me();
+        const sub = data?.user?.subscription;
+        status.innerHTML = `
+          <div class="badge">Status: <b>${sub?.status || "inactive"}</b></div>
+          <div class="muted small" style="margin-top:8px;">
+            Renovação automática: <b>${sub?.renovacaoAutomatica ? "SIM" : "NÃO"}</b><br/>
+            Vencimento: <b>${sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleString("pt-BR") : "-"}</b>
+          </div>
+        `;
+      }catch(e){
+        status.textContent = "Falha ao carregar status.";
+      }
+    }
+
+    document.getElementById("mockActivate").addEventListener("click", async () => {
+      try{
+        await activateMock();
+        toast("Acesso ativado (modo teste).");
+        await load();
+      }catch(err){
+        toast(err.message || "Falha ao ativar", "error");
+      }
+    });
+
+    load();
+  </script>
 </body>
 </html>
