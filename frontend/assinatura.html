@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Assinatura • Liberdade Financeira</title>
+
+  <style>
+    :root{
+      --bg:#070b12;
+      --bg2:#0f1c2e;
+      --card:#0f1726;
+      --line:rgba(255,255,255,.08);
+      --text:#e7eefc;
+      --muted:#aab3c5;
+      --accent:#24ff8a;
+      --accent2:#4ef1c3;
+      --shadow:0 14px 30px rgba(0,0,0,.35);
+      --radius:18px;
+      --max:520px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background: linear-gradient(180deg, var(--bg), var(--bg2));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+
+    a{ color:var(--accent2); text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+
+    .card{
+      width:100%;
+      max-width:var(--max);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:28px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:800;
+      font-size:18px;
+      margin-bottom:18px;
+    }
+
+    .logo{
+      width:34px;
+      height:34px;
+      border-radius:12px;
+      background:
+        radial-gradient(14px 14px at 30% 30%, rgba(78,241,195,.9), transparent 60%),
+        radial-gradient(14px 14px at 70% 70%, rgba(36,255,138,.9), transparent 60%),
+        linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
+      border:1px solid var(--line);
+    }
+
+    h1{
+      margin:0 0 10px;
+      font-size:22px;
+    }
+
+    .price{
+      font-size:34px;
+      font-weight:900;
+      margin:10px 0 6px;
+      color:var(--accent);
+    }
+
+    .period{
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:16px;
+    }
+
+    ul{
+      padding-left:18px;
+      margin:0 0 20px;
+      color:rgba(231,238,252,.85);
+      font-size:14px;
+      line-height:1.6;
+    }
+
+    li{ margin-bottom:6px; }
+
+    .btn{
+      width:100%;
+      padding:14px;
+      border-radius:14px;
+      border:1px solid rgba(36,255,138,.45);
+      background: linear-gradient(180deg, rgba(36,255,138,.18), rgba(36,255,138,.06));
+      color:var(--text);
+      font-weight:900;
+      cursor:pointer;
+      text-align:center;
+    }
+
+    .btn:hover{
+      border-color: rgba(36,255,138,.70);
+    }
+
+    .note{
+      margin-top:14px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.5;
+    }
+
+    .back{
+      display:block;
+      margin-top:16px;
+      text-align:center;
+      font-size:13px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="logo"></div>
+      Liberdade Financeira
+    </div>
+
+    <h1>Assinatura mensal</h1>
+
+    <div class="price">1 USDT</div>
+    <div class="period">por mês</div>
+
+    <ul>
+      <li>Acesso completo ao conteúdo de educação financeira</li>
+      <li>Dashboard do usuário</li>
+      <li>Área de afiliado com link próprio</li>
+      <li>Acompanhamento de indicações</li>
+      <li>Atualizações contínuas do conteúdo</li>
+    </ul>
+
+    <div class="btn">
+      Continuar (pagamento em breve)
+    </div>
+
+    <div class="note">
+      Esta é uma visualização da assinatura.  
+      O sistema de pagamento será integrado em uma etapa futura.
+    </div>
+
+    <a class="back" href="./index.html">← Voltar para página inicial</a>
+  </div>
+</body>
+</html>
