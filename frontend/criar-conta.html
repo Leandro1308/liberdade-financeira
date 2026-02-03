@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Criar conta • Liberdade Financeira</title>
+  <link rel="stylesheet" href="/assets/app.css"/>
+</head>
+<body>
+  <div class="container">
+    <div class="card topbar">
+      <div class="brand"><span class="dot"></span> Liberdade Financeira</div>
+      <div style="display:flex; gap:10px;">
+        <a class="badge" href="/index.html">Início</a>
+        <a class="badge" href="/login.html">Entrar</a>
+        <a class="badge" href="/assinatura.html">Ver assinatura</a>
+      </div>
+    </div>
+
+    <div style="height:16px"></div>
+
+    <div class="card section" style="max-width:520px; margin:0 auto;">
+      <h2 style="margin:0 0 6px;">Criar conta</h2>
+      <p class="muted" style="margin:0 0 14px;">Crie seu acesso. Se você veio por indicação, ela será registrada automaticamente.</p>
+
+      <form id="form" class="grid">
+        <div>
+          <label class="muted small">Nome</label>
+          <input class="input" id="name" type="text" placeholder="Seu nome" autocomplete="name" required/>
+        </div>
+        <div>
+          <label class="muted small">E-mail</label>
+          <input class="input" id="email" type="email" placeholder="seu@email.com" autocomplete="email" required/>
+        </div>
+        <div>
+          <label class="muted small">Senha (mínimo 8 caracteres)</label>
+          <input class="input" id="password" type="password" placeholder="••••••••" autocomplete="new-password" required/>
+        </div>
+
+        <div class="badge" id="refBox" style="display:none"></div>
+
+        <button class="btn primary" type="submit">Criar conta</button>
+      </form>
+    </div>
+
+    <div id="toast" class="toast"><div class="msg"></div></div>
+  </div>
+
+  <script type="module">
+    import { register } from "/assets/auth.js";
+    import { toast } from "/assets/ui.js";
+
+    const url = new URL(location.href);
+    const ref = url.searchParams.get("ref") || localStorage.getItem("LF_REF");
+
+    const refBox = document.getElementById("refBox");
+    if (ref) {
+      refBox.style.display = "inline-flex";
+      refBox.textContent = `Indicação detectada: ${ref}`;
+    }
+
+    document.getElementById("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try{
+        const name = document.getElementById("name").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        await register(name, email, password, ref || null);
+
+        toast("Conta criada. Indo para assinatura…");
+        setTimeout(()=> location.href="/assinatura.html", 700);
+      }catch(err){
+        toast(err.message || "Falha ao criar conta", "error");
+      }
+    });
+  </script>
+</body>
+</html>
