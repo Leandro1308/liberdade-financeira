@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Criar conta • Liberdade Financeira</title>
+
+  <style>
+    :root{
+      --bg:#070b12; --bg2:#0f1c2e; --line:rgba(255,255,255,.08);
+      --text:#e7eefc; --muted:#aab3c5; --accent:#24ff8a; --accent2:#4ef1c3;
+      --shadow:0 14px 30px rgba(0,0,0,.35); --radius:18px; --max:420px;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background: linear-gradient(180deg, var(--bg), var(--bg2));
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    a{ color:var(--accent2); text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+
+    .card{
+      width:100%; max-width:var(--max);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:26px;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; margin-bottom:18px; font-weight:800; font-size:18px; }
+    .logo{
+      width:34px; height:34px; border-radius:12px;
+      background:
+        radial-gradient(14px 14px at 30% 30%, rgba(78,241,195,.9), transparent 60%),
+        radial-gradient(14px 14px at 70% 70%, rgba(36,255,138,.9), transparent 60%);
+      border:1px solid var(--line);
+    }
+    h1{ margin:0 0 6px; font-size:22px; }
+    p{ margin:0 0 18px; color:var(--muted); font-size:14px; }
+
+    label{ display:block; font-size:13px; margin-bottom:6px; color:rgba(231,238,252,.85); }
+    input{
+      width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--line);
+      background: rgba(0,0,0,.25); color:var(--text); font-size:14px; outline:none; margin-bottom:14px;
+    }
+
+    .btn{
+      width:100%; padding:12px; border-radius:14px;
+      border:1px solid rgba(36,255,138,.45);
+      background: linear-gradient(180deg, rgba(36,255,138,.18), rgba(36,255,138,.06));
+      color:var(--text); font-weight:900; cursor:pointer; margin-top:6px;
+    }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .msg{
+      margin-top:12px; font-size:13px; line-height:1.5;
+      padding:10px 12px; border-radius:14px; border:1px solid var(--line);
+      background: rgba(0,0,0,.25);
+      display:none;
+    }
+    .msg.err{ border-color: rgba(255,77,77,.35); color: rgba(255,220,220,.95); }
+    .msg.ok{ border-color: rgba(78,241,195,.35); color: rgba(220,255,245,.95); }
+
+    .footer{ margin-top:16px; text-align:center; font-size:13px; color:var(--muted); }
+    .back{ display:block; text-align:center; margin-top:14px; font-size:13px; }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="logo"></div>
+      Liberdade Financeira
+    </div>
+
+    <h1>Criar conta</h1>
+    <p>Crie seu acesso para entrar no dashboard.</p>
+
+    <form id="signupForm">
+      <label for="email">E-mail</label>
+      <input id="email" type="email" placeholder="seu@email.com" required />
+
+      <label for="password">Senha</label>
+      <input id="password" type="password" placeholder="Crie uma senha" required />
+
+      <button class="btn" id="btnCreate" type="submit">Criar conta</button>
+      <div id="msg" class="msg"></div>
+    </form>
+
+    <div class="footer">
+      Já tem conta? <a href="./login.html">Fazer login</a>
+    </div>
+
+    <a class="back" href="./index.html">← Voltar para página inicial</a>
+  </div>
+
+  <script src="./app.js"></script>
+  <script>
+    if (LF.getToken()) window.location.href = "./dashboard.html";
+
+    const form = document.getElementById("signupForm");
+    const msg = document.getElementById("msg");
+    const btn = document.getElementById("btnCreate");
+
+    function show(type, text){
+      msg.className = "msg " + (type || "");
+      msg.textContent = text || "";
+      msg.style.display = "block";
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      msg.style.display = "none";
+      btn.disabled = true;
+
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        await LF.register(email, password);
+        await LF.login(email, password);
+        show("ok", "Conta criada. Redirecionando…");
+        window.location.href = "./dashboard.html";
+      } catch (err) {
+        if (err?.data?.error === "EMAIL_ALREADY_USED") {
+          show("err", "Esse e-mail já está em uso. Faça login.");
+        } else {
+          show("err", "Não foi possível criar a conta. Tente novamente.");
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
