@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard • Liberdade Financeira</title>
+
+  <style>
+    :root{
+      --bg:#070b12;
+      --bg2:#0f1c2e;
+      --card:#0f1726;
+      --line:rgba(255,255,255,.08);
+      --text:#e7eefc;
+      --muted:#aab3c5;
+      --accent:#24ff8a;
+      --accent2:#4ef1c3;
+      --shadow:0 14px 30px rgba(0,0,0,.35);
+      --radius:18px;
+      --sidebar:260px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background: linear-gradient(180deg, var(--bg), var(--bg2));
+      display:flex;
+    }
+
+    aside{
+      width:var(--sidebar);
+      background: rgba(0,0,0,.35);
+      border-right:1px solid var(--line);
+      padding:20px;
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:900;
+      font-size:18px;
+    }
+
+    .logo{
+      width:34px;
+      height:34px;
+      border-radius:12px;
+      background:
+        radial-gradient(14px 14px at 30% 30%, rgba(78,241,195,.9), transparent 60%),
+        radial-gradient(14px 14px at 70% 70%, rgba(36,255,138,.9), transparent 60%);
+      border:1px solid var(--line);
+    }
+
+    nav a{
+      display:block;
+      padding:12px 14px;
+      border-radius:14px;
+      color:var(--text);
+      text-decoration:none;
+      font-weight:700;
+      border:1px solid transparent;
+    }
+
+    nav a:hover{
+      background: rgba(255,255,255,.05);
+      border-color: rgba(78,241,195,.35);
+    }
+
+    main{
+      flex:1;
+      padding:26px;
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:22px;
+      margin-bottom:18px;
+    }
+
+    h1{
+      margin:0 0 6px;
+      font-size:24px;
+    }
+
+    p{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.6;
+    }
+
+    .logout{
+      margin-top:auto;
+      font-size:13px;
+      color:var(--muted);
+      text-decoration:none;
+      text-align:center;
+    }
+
+    .logout:hover{
+      text-decoration:underline;
+    }
+
+    @media (max-width: 900px){
+      aside{ display:none; }
+      body{ flex-direction:column; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <aside>
+    <div class="brand">
+      <div class="logo"></div>
+      Liberdade Financeira
+    </div>
+
+    <nav>
+      <a href="#">Visão geral</a>
+      <a href="#">Conteúdo</a>
+      <a href="#">Área de afiliado</a>
+      <a href="#">Minha conta</a>
+    </nav>
+
+    <a class="logout" href="./index.html">Sair</a>
+  </aside>
+
+  <main>
+    <div class="card">
+      <h1>Bem-vindo ao seu dashboard</h1>
+      <p>
+        Aqui você terá acesso ao conteúdo, acompanhará sua assinatura
+        e poderá visualizar suas indicações quando a área de afiliado estiver ativa.
+      </p>
+    </div>
+
+    <div class="card">
+      <h1>Status da assinatura</h1>
+      <p>
+        Assinatura: <strong>ativa (simulação)</strong><br>
+        Valor: 1 USDT / mês
+      </p>
+    </div>
+  </main>
+
+</body>
+</html>
