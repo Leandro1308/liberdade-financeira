@@ -136,5 +136,19 @@
       }
     });
   </script>
+  const API_BASE = "https://liberdade-financeira-sv3j.onrender.com";
+
+  async function testarAPI() {
+    try {
+      const res = await fetch(`${API_BASE}/health`);
+      const data = await res.json();
+      console.log("API OK:", data);
+    } catch (err) {
+      console.error("Erro ao conectar API:", err);
+    }
+  }
+
+  testarAPI();
+</script>
 </body>
 </html>
