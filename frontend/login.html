@@ -1,154 +1,175 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Login • Liberdade Financeira</title>
+  <meta charset="UTF-8" />
+  <title>Liberdade Financeira • Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Fonte -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
   <style>
-    :root{
-      --bg:#070b12; --bg2:#0f1c2e; --line:rgba(255,255,255,.08);
-      --text:#e7eefc; --muted:#aab3c5; --accent:#24ff8a; --accent2:#4ef1c3;
-      --shadow:0 14px 30px rgba(0,0,0,.35); --radius:18px; --max:420px;
-      --danger:#ff4d4d;
-    }
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
-    body{
-      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--text);
-      background: linear-gradient(180deg, var(--bg), var(--bg2));
-      display:flex; align-items:center; justify-content:center; padding:24px;
-    }
-    a{ color:var(--accent2); text-decoration:none; }
-    a:hover{ text-decoration:underline; }
+    * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
-    .card{
-      width:100%; max-width:var(--max);
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding:26px;
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(1200px 600px at 20% 10%, #0f2e2a, #070b12 60%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #e7eefc;
     }
-    .brand{ display:flex; align-items:center; gap:10px; margin-bottom:18px; font-weight:800; font-size:18px; }
-    .logo{
-      width:34px; height:34px; border-radius:12px;
-      background:
-        radial-gradient(14px 14px at 30% 30%, rgba(78,241,195,.9), transparent 60%),
-        radial-gradient(14px 14px at 70% 70%, rgba(36,255,138,.9), transparent 60%),
-        linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
-      border:1px solid var(--line);
-    }
-    h1{ margin:0 0 6px; font-size:22px; }
-    p{ margin:0 0 18px; color:var(--muted); font-size:14px; }
 
-    label{ display:block; font-size:13px; margin-bottom:6px; color:rgba(231,238,252,.85); }
-    input{
-      width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--line);
-      background: rgba(0,0,0,.25); color:var(--text); font-size:14px; outline:none; margin-bottom:14px;
+    .card {
+      width: 380px;
+      background: rgba(18,27,42,0.9);
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.45);
+      backdrop-filter: blur(8px);
     }
-    input:focus{ border-color: rgba(78,241,195,.45); }
 
-    .btn{
-      width:100%; padding:12px; border-radius:14px;
-      border:1px solid rgba(36,255,138,.45);
-      background: linear-gradient(180deg, rgba(36,255,138,.18), rgba(36,255,138,.06));
-      color:var(--text); font-weight:900; cursor:pointer; margin-top:6px;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      font-weight: 700;
+      font-size: 18px;
     }
-    .btn:disabled{ opacity:.6; cursor:not-allowed; }
 
-    .msg{
-      margin-top:12px; font-size:13px; line-height:1.5;
-      padding:10px 12px; border-radius:14px; border:1px solid var(--line);
-      background: rgba(0,0,0,.25);
-      display:none;
+    .brand-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #4ef1c3, #24ff8a);
+      box-shadow: 0 0 12px rgba(36,255,138,.8);
     }
-    .msg.err{ border-color: rgba(255,77,77,.35); color: rgba(255,220,220,.95); }
-    .msg.ok{ border-color: rgba(78,241,195,.35); color: rgba(220,255,245,.95); }
 
-    .footer{ margin-top:16px; text-align:center; font-size:13px; color:var(--muted); }
-    .back{ display:block; text-align:center; margin-top:14px; font-size:13px; }
+    h2 {
+      margin: 12px 0 6px;
+      font-size: 22px;
+    }
+
+    p {
+      margin: 0 0 18px;
+      font-size: 14px;
+      color: #aab3c5;
+    }
+
+    label {
+      font-size: 13px;
+      color: #aab3c5;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      outline: none;
+      background: #0f1c2e;
+      color: #e7eefc;
+      margin-bottom: 14px;
+    }
+
+    input::placeholder { color: #6f7a90; }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 15px;
+      background: linear-gradient(135deg, #24ff8a, #4ef1c3);
+      color: #062018;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(36,255,138,.35);
+    }
+
+    .links {
+      margin-top: 18px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .links a {
+      color: #4ef1c3;
+      text-decoration: none;
+      margin: 0 4px;
+    }
+
+    .links a:hover { text-decoration: underline; }
   </style>
 </head>
 
 <body>
   <div class="card">
     <div class="brand">
-      <div class="logo"></div>
+      <div class="brand-dot"></div>
       Liberdade Financeira
     </div>
 
-    <h1>Acessar conta</h1>
+    <h2>Acessar conta</h2>
     <p>Entre com seu e-mail e senha para acessar o sistema.</p>
 
     <form id="loginForm">
       <label for="email">E-mail</label>
-      <input id="email" type="email" placeholder="seu@email.com" required />
+      <input type="email" id="email" placeholder="seu@email.com" required>
 
-      <label for="password">Senha</label>
-      <input id="password" type="password" placeholder="••••••••" required />
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" placeholder="••••••••" required>
 
-      <button class="btn" id="btnLogin" type="submit">Entrar</button>
-
-      <div id="msg" class="msg"></div>
+      <button type="submit">Entrar</button>
     </form>
 
-    <div class="footer">
-      Não tem conta? <a href="./cadastro.html">Criar conta</a> •
-      <a href="./assinatura.html">Ver assinatura</a>
+    <div class="links">
+      Não tem conta?
+      <a href="assinatura.html">Criar conta</a> •
+      <a href="index.html">Voltar para página inicial</a>
     </div>
-
-    <a class="back" href="./index.html">← Voltar para página inicial</a>
   </div>
 
-  <script src="./app.js"></script>
   <script>
-    // se já estiver logado, manda para o dashboard
-    if (LF.getToken()) window.location.href = "./dashboard.html";
+    const API_BASE = "https://liberdade-financeira-sv3j.onrender.com";
 
-    const form = document.getElementById("loginForm");
-    const msg = document.getElementById("msg");
-    const btn = document.getElementById("btnLogin");
-
-    function show(type, text){
-      msg.className = "msg " + (type || "");
-      msg.textContent = text || "";
-      msg.style.display = "block";
-    }
-
-    form.addEventListener("submit", async (e) => {
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      msg.style.display = "none";
-      btn.disabled = true;
 
       const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
+      const senha = document.getElementById("senha").value;
 
       try {
-        await LF.login(email, password);
-        show("ok", "Login realizado. Redirecionando…");
-        window.location.href = "./dashboard.html";
+        const res = await fetch(`${API_BASE}/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, senha })
+        });
+
+        if (!res.ok) {
+          alert("E-mail ou senha inválidos");
+          return;
+        }
+
+        const data = await res.json();
+        localStorage.setItem("token", data.token);
+
+        window.location.href = "dashboard.html";
       } catch (err) {
-        show("err", "Falha no login. Verifique e-mail e senha.");
-      } finally {
-        btn.disabled = false;
+        alert("Erro ao conectar com o servidor.");
       }
     });
   </script>
-  const API_BASE = "https://liberdade-financeira-sv3j.onrender.com";
-
-  async function testarAPI() {
-    try {
-      const res = await fetch(`${API_BASE}/health`);
-      const data = await res.json();
-      console.log("API OK:", data);
-    } catch (err) {
-      console.error("Erro ao conectar API:", err);
-    }
-  }
-
-  testarAPI();
-</script>
 </body>
 </html>
