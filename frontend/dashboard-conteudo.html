@@ -35,6 +35,8 @@
       background: rgba(0,0,0,.35);
       border-right:1px solid var(--line);
       padding:20px;
+      display:flex;
+      flex-direction:column;
     }
 
     .brand{
@@ -64,6 +66,7 @@
       text-decoration:none;
       font-weight:700;
       margin-bottom:6px;
+      border:1px solid transparent;
     }
 
     nav a.active,
@@ -119,7 +122,38 @@
 
     .module p{
       font-size:13px;
+      color:rgba(231,238,252,.78);
     }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.22);
+      font-size:12px;
+      font-weight:800;
+      margin-top:12px;
+    }
+
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      background: rgba(255,255,255,.25);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .dot.ok{ background: rgba(36,255,138,.85); }
+    .dot.off{ background: rgba(255,77,77,.80); }
+
+    .logout{
+      margin-top:auto;
+      font-size:13px;
+      color:var(--muted);
+      text-decoration:none;
+      text-align:center;
+    }
+    .logout:hover{ text-decoration:underline; }
 
     @media (max-width: 900px){
       aside{ display:none; }
@@ -142,15 +176,21 @@
       <a href="./dashboard-afiliado.html">Área de afiliado</a>
       <a href="./dashboard-conta.html">Minha conta</a>
     </nav>
+
+    <a id="logoutLink" class="logout" href="./index.html">Sair</a>
   </aside>
 
   <main>
     <div class="card">
       <h1>Conteúdo</h1>
       <p>
-        Aqui você encontrará os módulos de educação financeira disponíveis
-        conforme sua assinatura.
+        Aqui você encontrará os módulos de educação financeira disponíveis conforme sua assinatura.
       </p>
+
+      <div class="badge">
+        <span id="subDot" class="dot"></span>
+        Assinatura: <span id="subStatus">carregando…</span>
+      </div>
     </div>
 
     <div class="grid">
@@ -176,5 +216,26 @@
     </div>
   </main>
 
+  <script src="./app.js"></script>
+  <script>
+    if (!LF.requireAuth()) {}
+    LF.attachLogout("#logoutLink");
+
+    async function loadSub(){
+      const sub = await LF.apiFetch("/api/assinatura/status");
+      const status = (sub?.status || "inactive").toLowerCase();
+      LF.setText("subStatus", status === "active" ? "ativa" : "inativa");
+
+      const dot = document.getElementById("subDot");
+      dot.classList.remove("ok","off");
+      dot.classList.add(status === "active" ? "ok" : "off");
+    }
+
+    loadSub().catch(() => {
+      LF.setText("subStatus", "erro ao carregar");
+      const dot = document.getElementById("subDot");
+      dot.classList.remove("ok","off");
+    });
+  </script>
 </body>
 </html>
