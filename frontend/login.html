@@ -1,173 +1,68 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Liberdade Financeira • Login</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Fonte -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: radial-gradient(1200px 600px at 20% 10%, #0f2e2a, #070b12 60%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #e7eefc;
-    }
-
-    .card {
-      width: 380px;
-      background: rgba(18,27,42,0.9);
-      border-radius: 18px;
-      padding: 28px;
-      box-shadow: 0 20px 40px rgba(0,0,0,.45);
-      backdrop-filter: blur(8px);
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-      font-weight: 700;
-      font-size: 18px;
-    }
-
-    .brand-dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: radial-gradient(circle, #4ef1c3, #24ff8a);
-      box-shadow: 0 0 12px rgba(36,255,138,.8);
-    }
-
-    h2 {
-      margin: 12px 0 6px;
-      font-size: 22px;
-    }
-
-    p {
-      margin: 0 0 18px;
-      font-size: 14px;
-      color: #aab3c5;
-    }
-
-    label {
-      font-size: 13px;
-      color: #aab3c5;
-      display: block;
-      margin-bottom: 6px;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      border-radius: 12px;
-      border: none;
-      outline: none;
-      background: #0f1c2e;
-      color: #e7eefc;
-      margin-bottom: 14px;
-    }
-
-    input::placeholder { color: #6f7a90; }
-
-    button {
-      width: 100%;
-      padding: 13px;
-      border-radius: 14px;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 15px;
-      background: linear-gradient(135deg, #24ff8a, #4ef1c3);
-      color: #062018;
-      transition: transform .15s ease, box-shadow .15s ease;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 10px 25px rgba(36,255,138,.35);
-    }
-
-    .links {
-      margin-top: 18px;
-      text-align: center;
-      font-size: 13px;
-    }
-
-    .links a {
-      color: #4ef1c3;
-      text-decoration: none;
-      margin: 0 4px;
-    }
-
-    .links a:hover { text-decoration: underline; }
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Login • Liberdade Financeira</title>
+  <link rel="stylesheet" href="/assets/app.css"/>
 </head>
-
 <body>
-  <div class="card">
-    <div class="brand">
-      <div class="brand-dot"></div>
-      Liberdade Financeira
+  <div class="container">
+    <div class="card topbar">
+      <div class="brand"><span class="dot"></span> Liberdade Financeira</div>
+      <div style="display:flex; gap:10px;">
+        <a class="badge" href="/index.html">Início</a>
+        <a class="badge" href="/criar-conta.html">Criar conta</a>
+        <a class="badge" href="/assinatura.html">Ver assinatura</a>
+      </div>
     </div>
 
-    <h2>Acessar conta</h2>
-    <p>Entre com seu e-mail e senha para acessar o sistema.</p>
+    <div style="height:16px"></div>
 
-    <form id="loginForm">
-      <label for="email">E-mail</label>
-      <input type="email" id="email" placeholder="seu@email.com" required>
+    <div class="card section" style="max-width:520px; margin:0 auto;">
+      <h2 style="margin:0 0 6px;">Acessar conta</h2>
+      <p class="muted" style="margin:0 0 14px;">Entre com seu e-mail e senha para acessar o sistema.</p>
 
-      <label for="senha">Senha</label>
-      <input type="password" id="senha" placeholder="••••••••" required>
+      <form id="form" class="grid">
+        <div>
+          <label class="muted small">E-mail</label>
+          <input class="input" id="email" type="email" placeholder="seu@email.com" autocomplete="email" required/>
+        </div>
+        <div>
+          <label class="muted small">Senha</label>
+          <input class="input" id="password" type="password" placeholder="••••••••" autocomplete="current-password" required/>
+        </div>
 
-      <button type="submit">Entrar</button>
-    </form>
+        <button class="btn primary" type="submit">Entrar</button>
 
-    <div class="links">
-      Não tem conta?
-      <a href="assinatura.html">Criar conta</a> •
-      <a href="index.html">Voltar para página inicial</a>
+        <div class="muted small">
+          Não tem conta? <a href="/criar-conta.html">Criar conta</a> • <a href="/index.html">Voltar para página inicial</a>
+        </div>
+      </form>
     </div>
+
+    <div id="toast" class="toast"><div class="msg"></div></div>
   </div>
 
-  <script>
-    const API_BASE = "https://liberdade-financeira-sv3j.onrender.com";
+  <script type="module">
+    import { login } from "/assets/auth.js";
+    import { toast } from "/assets/ui.js";
 
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    // Se veio ref no link, guarda para criar conta depois (opcional)
+    const url = new URL(location.href);
+    const ref = url.searchParams.get("ref");
+    if (ref) localStorage.setItem("LF_REF", ref);
+
+    document.getElementById("form").addEventListener("submit", async (e) => {
       e.preventDefault();
-
-      const email = document.getElementById("email").value;
-      const senha = document.getElementById("senha").value;
-
-      try {
-        const res = await fetch(`${API_BASE}/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, senha })
-        });
-
-        if (!res.ok) {
-          alert("E-mail ou senha inválidos");
-          return;
-        }
-
-        const data = await res.json();
-        localStorage.setItem("token", data.token);
-
-        window.location.href = "dashboard.html";
-      } catch (err) {
-        alert("Erro ao conectar com o servidor.");
+      try{
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        await login(email, password);
+        toast("Login OK. Indo para o dashboard…");
+        setTimeout(()=> location.href="/dashboard.html", 600);
+      }catch(err){
+        toast(err.message || "Falha no login", "error");
       }
     });
   </script>
