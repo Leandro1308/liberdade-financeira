@@ -35,6 +35,8 @@
       background: rgba(0,0,0,.35);
       border-right:1px solid var(--line);
       padding:20px;
+      display:flex;
+      flex-direction:column;
     }
 
     .brand{
@@ -64,6 +66,7 @@
       text-decoration:none;
       font-weight:700;
       margin-bottom:6px;
+      border:1px solid transparent;
     }
 
     nav a.active,
@@ -129,6 +132,39 @@
       word-break:break-all;
     }
 
+    .btnRow{
+      display:flex;
+      gap:10px;
+      margin-top:12px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(36,255,138,.45);
+      background: linear-gradient(180deg, rgba(36,255,138,.18), rgba(36,255,138,.06));
+      color:var(--text);
+      font-weight:900;
+      cursor:pointer;
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .btn:hover{ border-color: rgba(36,255,138,.70); }
+
+    .logout{
+      margin-top:auto;
+      font-size:13px;
+      color:var(--muted);
+      text-decoration:none;
+      text-align:center;
+    }
+    .logout:hover{ text-decoration:underline; }
+
     @media (max-width: 900px){
       aside{ display:none; }
       body{ flex-direction:column; }
@@ -150,6 +186,8 @@
       <a href="./dashboard-afiliado.html" class="active">Área de afiliado</a>
       <a href="./dashboard-conta.html">Minha conta</a>
     </nav>
+
+    <a id="logoutLink" class="logout" href="./index.html">Sair</a>
   </aside>
 
   <main>
@@ -161,15 +199,15 @@
 
       <div class="stats">
         <div class="stat">
-          <strong>12</strong>
+          <strong id="totalRef">—</strong>
           Indicações totais
         </div>
         <div class="stat">
-          <strong>5</strong>
+          <strong id="activeSubs">—</strong>
           Assinaturas ativas
         </div>
         <div class="stat">
-          <strong>—</strong>
+          <strong id="earnings">—</strong>
           Ganhos (em breve)
         </div>
       </div>
@@ -177,11 +215,49 @@
 
     <div class="card">
       <h1>Seu link de afiliado</h1>
-      <div class="linkbox">
-        https://liberdade-financeira.app/?ref=SEU_CODIGO
+      <div class="linkbox" id="refLink">
+        carregando…
       </div>
+
+      <div class="btnRow">
+        <button class="btn" id="btnCopy" type="button">Copiar link</button>
+      </div>
+
+      <p class="muted" style="margin-top:12px;">
+        Código: <strong id="refCode">—</strong>
+      </p>
     </div>
   </main>
 
+  <script src="./app.js"></script>
+  <script>
+    if (!LF.requireAuth()) {}
+    LF.attachLogout("#logoutLink");
+
+    async function loadAffiliate(){
+      const data = await LF.apiFetch("/api/afiliados/me");
+
+      LF.setText("totalRef", data?.totalReferrals ?? 0);
+      LF.setText("activeSubs", data?.activeSubscriptions ?? 0);
+      LF.setText("earnings", data?.earnings ?? "—");
+      LF.setText("refCode", data?.code ?? "—");
+
+      const link = data?.referralLink || "—";
+      LF.setText("refLink", link);
+
+      document.getElementById("btnCopy").onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(link);
+          alert("Link copiado!");
+        } catch {
+          alert("Não foi possível copiar automaticamente. Copie manualmente.");
+        }
+      };
+    }
+
+    loadAffiliate().catch(() => {
+      LF.setText("refLink", "erro ao carregar");
+    });
+  </script>
 </body>
 </html>
