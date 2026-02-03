@@ -1,5 +1,13 @@
-const express = require("express");
+import path from "path";
+import { fileURLToPath } from "url";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve arquivos estáticos do /frontend (fora da pasta backend)
+const FRONTEND_DIR = path.join(__dirname, "..", "..", "frontend");
+app.use(express.static(FRONTEND_DIR));
+const express = require("express");
 const app = express();
 
 // Middleware básico
