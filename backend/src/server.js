@@ -1,37 +1,27 @@
-// backend/src/server.js
-const express = require("express");
-const helmet = require("helmet");
-const cors = require("cors");
-
-const authRoutes = require("./routes/auth");
-const usersRoutes = require("./routes/users");
-const afiliadosRoutes = require("./routes/afiliados");
-const assinaturaRoutes = require("./routes/assinatura");
+import express from "express";
 
 const app = express();
 
-// Middlewares básicos
-app.use(helmet());
-app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "PATCH", "DELETE"] }));
-app.use(express.json({ limit: "200kb" }));
+// Middleware básico
+app.use(express.json());
 
-// Health check
+// Health check (OBRIGATÓRIO para Render)
 app.get("/health", (req, res) => {
-  res.json({ ok: true, name: "liberdade-financeira-backend" });
+  res.status(200).json({
+    ok: true,
+    service: "liberdade-financeira-api",
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Rotas API
-app.use("/api/auth", authRoutes);
-app.use("/api/users", usersRoutes);
-app.use("/api/afiliados", afiliadosRoutes);
-app.use("/api/assinatura", assinaturaRoutes);
-
-// 404
-app.use((req, res) => {
-  res.status(404).json({ error: "Not Found" });
+// Rota padrão (opcional, mas ajuda)
+app.get("/", (req, res) => {
+  res.json({ message: "API Liberdade Financeira online" });
 });
 
-const PORT = process.env.PORT || 3000;
+// Porta (Render injeta automaticamente)
+const PORT = process.env.PORT || 10000;
+
 app.listen(PORT, () => {
-  console.log(`[LF] Backend rodando na porta ${PORT}`);
+  console.log(`🚀 Backend rodando na porta ${PORT}`);
 });
