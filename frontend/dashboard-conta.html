@@ -1,252 +1,115 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Minha Conta • Liberdade Financeira</title>
-
-  <style>
-    :root{
-      --bg:#070b12;
-      --bg2:#0f1c2e;
-      --card:#0f1726;
-      --line:rgba(255,255,255,.08);
-      --text:#e7eefc;
-      --muted:#aab3c5;
-      --accent:#24ff8a;
-      --accent2:#4ef1c3;
-      --shadow:0 14px 30px rgba(0,0,0,.35);
-      --radius:18px;
-      --sidebar:260px;
-    }
-
-    *{ box-sizing:border-box; }
-    body{
-      margin:0;
-      min-height:100vh;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--text);
-      background: linear-gradient(180deg, var(--bg), var(--bg2));
-      display:flex;
-    }
-
-    aside{
-      width:var(--sidebar);
-      background: rgba(0,0,0,.35);
-      border-right:1px solid var(--line);
-      padding:20px;
-      display:flex;
-      flex-direction:column;
-    }
-
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-weight:900;
-      font-size:18px;
-      margin-bottom:18px;
-    }
-
-    .logo{
-      width:34px;
-      height:34px;
-      border-radius:12px;
-      background:
-        radial-gradient(14px 14px at 30% 30%, rgba(78,241,195,.9), transparent 60%),
-        radial-gradient(14px 14px at 70% 70%, rgba(36,255,138,.9), transparent 60%);
-      border:1px solid var(--line);
-    }
-
-    nav a{
-      display:block;
-      padding:12px 14px;
-      border-radius:14px;
-      color:var(--text);
-      text-decoration:none;
-      font-weight:700;
-      margin-bottom:6px;
-      border:1px solid transparent;
-    }
-
-    nav a.active,
-    nav a:hover{
-      background: rgba(255,255,255,.05);
-      border:1px solid rgba(78,241,195,.35);
-    }
-
-    main{
-      flex:1;
-      padding:26px;
-    }
-
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding:22px;
-      margin-bottom:18px;
-    }
-
-    h1{
-      margin:0 0 8px;
-      font-size:24px;
-    }
-
-    p{
-      margin:0;
-      color:var(--muted);
-      font-size:14px;
-      line-height:1.6;
-    }
-
-    .info{
-      margin-top:14px;
-      font-size:14px;
-      line-height:1.6;
-      padding:14px;
-      border-radius:14px;
-      border:1px solid var(--line);
-      background: rgba(0,0,0,.25);
-    }
-
-    .info strong{
-      display:block;
-      color:rgba(231,238,252,.95);
-      margin-bottom:4px;
-    }
-
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background: rgba(0,0,0,.22);
-      font-size:12px;
-      font-weight:800;
-      margin-top:12px;
-    }
-
-    .dot{
-      width:10px; height:10px; border-radius:50%;
-      background: rgba(255,255,255,.25);
-      border:1px solid rgba(255,255,255,.10);
-    }
-    .dot.ok{ background: rgba(36,255,138,.85); }
-    .dot.off{ background: rgba(255,77,77,.80); }
-
-    .logout{
-      margin-top:auto;
-      font-size:13px;
-      color:var(--muted);
-      text-decoration:none;
-      text-align:center;
-    }
-    .logout:hover{ text-decoration:underline; }
-
-    @media (max-width: 900px){
-      aside{ display:none; }
-      body{ flex-direction:column; }
-    }
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Minha conta • Liberdade Financeira</title>
+  <link rel="stylesheet" href="/assets/app.css"/>
 </head>
-
 <body>
-
-  <aside>
-    <div class="brand">
-      <div class="logo"></div>
-      Liberdade Financeira
-    </div>
-
-    <nav>
-      <a href="./dashboard.html">Visão geral</a>
-      <a href="./dashboard-conteudo.html">Conteúdo</a>
-      <a href="./dashboard-afiliado.html">Área de afiliado</a>
-      <a href="./dashboard-conta.html" class="active">Minha conta</a>
-    </nav>
-
-    <a id="logoutLink" class="logout" href="./index.html">Sair</a>
-  </aside>
-
-  <main>
-    <div class="card">
-      <h1>Minha conta</h1>
-      <p>Informações básicas da sua conta no sistema.</p>
-
-      <div class="badge">
-        <span id="subDot" class="dot"></span>
-        Assinatura: <span id="subStatus">carregando…</span>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="card sidecard">
+        <div class="brand"><span class="dot"></span> Liberdade Financeira</div>
+        <div class="muted small" id="who" style="margin-top:8px;">Carregando…</div>
       </div>
 
-      <div class="info">
-        <strong>E-mail</strong>
-        <span id="userEmail">carregando…</span>
+      <div class="nav">
+        <a href="/dashboard.html">Visão geral <span class="muted small">→</span></a>
+        <a href="/dashboard-conteudo.html">Conteúdo <span class="muted small">→</span></a>
+        <a href="/dashboard-afiliado.html">Afiliado <span class="muted small">→</span></a>
+        <a class="active" href="/dashboard-conta.html">Minha conta <span class="muted small">→</span></a>
+        <a href="/index.html">Sair (público) <span class="muted small">→</span></a>
       </div>
 
-      <div class="info">
-        <strong>Membro desde</strong>
-        <span id="memberSince">—</span>
+      <div style="height:12px"></div>
+      <button id="logout" class="btn ghost" style="width:100%;">Encerrar sessão</button>
+    </aside>
+
+    <main class="main">
+      <div class="card section">
+        <h2 style="margin:0 0 6px;">Minha conta</h2>
+        <p class="muted" style="margin:0;">Dados e status da assinatura.</p>
       </div>
 
-      <div class="info">
-        <strong>Plano</strong>
-        <span id="subPlan">—</span>
+      <div style="height:14px"></div>
+
+      <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="card section">
+          <div class="badge">👤 Dados</div>
+          <div id="data" class="muted" style="margin-top:10px;">Carregando…</div>
+        </div>
+        <div class="card section">
+          <div class="badge">🧾 Assinatura</div>
+          <div id="sub" class="muted" style="margin-top:10px;">Carregando…</div>
+          <p class="muted small" style="margin-top:10px;">
+            Renovação automática será controlada quando o pagamento estiver integrado (via gateway).
+          </p>
+        </div>
       </div>
 
-      <div class="info">
-        <strong>Valor</strong>
-        <span id="subPrice">—</span>
+      <div style="height:14px"></div>
+
+      <div class="card section">
+        <div class="badge">Segurança</div>
+        <p class="muted small" style="margin-top:10px;">
+          Sua sessão é protegida por token (JWT). Para sua segurança, encerre a sessão ao usar computador compartilhado.
+        </p>
       </div>
 
-      <p class="muted" style="margin-top:14px;">
-        Em breve você poderá atualizar seus dados e gerenciar sua assinatura por aqui.
-      </p>
-    </div>
-  </main>
+      <div id="toast" class="toast"><div class="msg"></div></div>
+    </main>
+  </div>
 
-  <script src="./app.js"></script>
-  <script>
-    if (!LF.requireAuth()) {}
-    LF.attachLogout("#logoutLink");
+  <script type="module">
+    import { clearToken, me, requireLogged, requireActive } from "/assets/auth.js";
+    import { toast } from "/assets/ui.js";
 
-    function formatMonthYear(iso){
-      try {
-        const d = new Date(iso);
-        const m = d.toLocaleString("pt-BR", { month: "long" });
-        const y = d.getFullYear();
-        return m.charAt(0).toUpperCase() + m.slice(1) + " de " + y;
-      } catch {
-        return "—";
+    requireLogged();
+
+    document.getElementById("logout").addEventListener("click", () => {
+      clearToken();
+      location.href = "/login.html";
+    });
+
+    async function init(){
+      try{
+        const data = await me();
+        const user = data.user;
+        document.getElementById("who").textContent = `${user.name} • ${user.email}`;
+        if (!requireActive(user.subscription)) return;
+
+        document.getElementById("data").innerHTML = `
+          <div class="muted small">Nome</div>
+          <div><b>${user.name}</b></div>
+          <div style="height:10px"></div>
+          <div class="muted small">E-mail</div>
+          <div><b>${user.email}</b></div>
+          <div style="height:10px"></div>
+          <div class="muted small">Seu código afiliado</div>
+          <div><b>${user.affiliateCode}</b></div>
+        `;
+
+        const end = user.subscription.currentPeriodEnd
+          ? new Date(user.subscription.currentPeriodEnd).toLocaleString("pt-BR")
+          : "-";
+
+        document.getElementById("sub").innerHTML = `
+          <div class="badge">Status: <b>${user.subscription.status}</b></div>
+          <div class="muted small" style="margin-top:8px;">
+            Plano: <b>${user.subscription.plan}</b><br/>
+            Renovação automática: <b>${user.subscription.renovacaoAutomatica ? "SIM" : "NÃO"}</b><br/>
+            Vencimento: <b>${end}</b>
+          </div>
+        `;
+      }catch(e){
+        toast("Falha ao carregar conta.", "error");
+        clearToken();
+        setTimeout(()=> location.href="/login.html", 900);
       }
     }
 
-    async function loadUser(){
-      const u = await LF.apiFetch("/api/users/me");
-      LF.setText("userEmail", u?.email || "—");
-      LF.setText("memberSince", u?.createdAt ? formatMonthYear(u.createdAt) : "—");
-    }
-
-    async function loadSub(){
-      const sub = await LF.apiFetch("/api/assinatura/status");
-      const status = (sub?.status || "inactive").toLowerCase();
-
-      LF.setText("subStatus", status === "active" ? "ativa" : "inativa");
-      LF.setText("subPlan", sub?.plan || "monthly");
-      LF.setText("subPrice", sub?.price || "1 USDT / mês");
-
-      const dot = document.getElementById("subDot");
-      dot.classList.remove("ok","off");
-      dot.classList.add(status === "active" ? "ok" : "off");
-    }
-
-    Promise.all([loadUser(), loadSub()]).catch(() => {
-      LF.setText("userEmail", "erro ao carregar");
-      LF.setText("subStatus", "erro ao carregar");
-    });
+    init();
   </script>
 </body>
 </html>
