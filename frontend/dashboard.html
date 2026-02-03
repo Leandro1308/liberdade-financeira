@@ -1,281 +1,97 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Dashboard • Liberdade Financeira</title>
-
-  <style>
-    :root{
-      --bg:#070b12;
-      --bg2:#0f1c2e;
-      --card:#0f1726;
-      --line:rgba(255,255,255,.08);
-      --text:#e7eefc;
-      --muted:#aab3c5;
-      --accent:#24ff8a;
-      --accent2:#4ef1c3;
-      --shadow:0 14px 30px rgba(0,0,0,.35);
-      --radius:18px;
-      --sidebar:260px;
-    }
-
-    *{ box-sizing:border-box; }
-    body{
-      margin:0;
-      min-height:100vh;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--text);
-      background: linear-gradient(180deg, var(--bg), var(--bg2));
-      display:flex;
-    }
-
-    aside{
-      width:var(--sidebar);
-      background: rgba(0,0,0,.35);
-      border-right:1px solid var(--line);
-      padding:20px;
-      display:flex;
-      flex-direction:column;
-      gap:18px;
-    }
-
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-weight:900;
-      font-size:18px;
-    }
-
-    .logo{
-      width:34px;
-      height:34px;
-      border-radius:12px;
-      background:
-        radial-gradient(14px 14px at 30% 30%, rgba(78,241,195,.9), transparent 60%),
-        radial-gradient(14px 14px at 70% 70%, rgba(36,255,138,.9), transparent 60%),
-        linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
-      border:1px solid var(--line);
-    }
-
-    nav a{
-      display:block;
-      padding:12px 14px;
-      border-radius:14px;
-      color:var(--text);
-      text-decoration:none;
-      font-weight:700;
-      border:1px solid transparent;
-      margin-bottom:6px;
-    }
-
-    nav a.active,
-    nav a:hover{
-      background: rgba(255,255,255,.05);
-      border-color: rgba(78,241,195,.35);
-    }
-
-    main{
-      flex:1;
-      padding:26px;
-    }
-
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding:22px;
-      margin-bottom:18px;
-    }
-
-    h1{
-      margin:0 0 6px;
-      font-size:24px;
-    }
-
-    p{
-      margin:0;
-      color:var(--muted);
-      font-size:14px;
-      line-height:1.6;
-    }
-
-    .muted{ color:var(--muted); }
-
-    .row{
-      display:flex;
-      gap:14px;
-      flex-wrap:wrap;
-      margin-top:14px;
-    }
-
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background: rgba(0,0,0,.22);
-      font-size:13px;
-      font-weight:800;
-    }
-
-    .dot{
-      width:10px;
-      height:10px;
-      border-radius:50%;
-      background: rgba(255,255,255,.25);
-      border:1px solid rgba(255,255,255,.10);
-    }
-
-    .dot.ok{ background: rgba(36,255,138,.85); }
-    .dot.off{ background: rgba(255,77,77,.80); }
-
-    .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:12px 14px;
-      border-radius:14px;
-      border:1px solid rgba(36,255,138,.45);
-      background: linear-gradient(180deg, rgba(36,255,138,.18), rgba(36,255,138,.06));
-      color:var(--text);
-      font-weight:900;
-      cursor:pointer;
-      text-decoration:none;
-      font-size:13px;
-    }
-
-    .btn:hover{ border-color: rgba(36,255,138,.70); }
-
-    .logout{
-      margin-top:auto;
-      font-size:13px;
-      color:var(--muted);
-      text-decoration:none;
-      text-align:center;
-    }
-
-    .logout:hover{ text-decoration:underline; }
-
-    @media (max-width: 900px){
-      aside{ display:none; }
-      body{ flex-direction:column; }
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/app.css"/>
 </head>
-
 <body>
-
-  <aside>
-    <div class="brand">
-      <div class="logo"></div>
-      Liberdade Financeira
-    </div>
-
-    <nav>
-      <a href="./dashboard.html" class="active">Visão geral</a>
-      <a href="./dashboard-conteudo.html">Conteúdo</a>
-      <a href="./dashboard-afiliado.html">Área de afiliado</a>
-      <a href="./dashboard-conta.html">Minha conta</a>
-    </nav>
-
-    <a id="logoutLink" class="logout" href="./index.html">Sair</a>
-  </aside>
-
-  <main>
-    <div class="card">
-      <h1>Bem-vindo ao seu dashboard</h1>
-      <p class="muted">
-        Aqui você terá acesso ao conteúdo, acompanhará sua assinatura e verá suas indicações.
-      </p>
-
-      <div class="row">
-        <span class="pill">
-          <span id="subDot" class="dot"></span>
-          Assinatura: <span id="subStatus">carregando…</span>
-        </span>
-
-        <span class="pill">
-          Plano: <span id="subPlan">—</span>
-        </span>
-
-        <span class="pill">
-          Valor: <span id="subPrice">—</span>
-        </span>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="card sidecard">
+        <div class="brand"><span class="dot"></span> Liberdade Financeira</div>
+        <div class="muted small" id="who" style="margin-top:8px;">Carregando…</div>
       </div>
 
-      <div class="row" style="margin-top:16px;">
-        <a class="btn" href="./dashboard-conteudo.html">Ir para conteúdo</a>
-        <a class="btn" href="./dashboard-afiliado.html">Ver área de afiliado</a>
-      </div>
-    </div>
-
-    <div class="card">
-      <h1>Status da assinatura</h1>
-      <p class="muted">
-        Atualizado em: <span id="subUpdatedAt">—</span>
-      </p>
-
-      <div class="row" style="margin-top:16px;">
-        <button class="btn" id="btnToggle" type="button">Alternar status (teste)</button>
+      <div class="nav">
+        <a class="active" href="/dashboard.html">Visão geral <span class="muted small">→</span></a>
+        <a href="/dashboard-conteudo.html">Conteúdo <span class="muted small">→</span></a>
+        <a href="/dashboard-afiliado.html">Afiliado <span class="muted small">→</span></a>
+        <a href="/dashboard-conta.html">Minha conta <span class="muted small">→</span></a>
+        <a href="/index.html">Sair (público) <span class="muted small">→</span></a>
       </div>
 
-      <p class="muted" style="margin-top:12px;">
-        * Este botão é apenas para teste (rota <code>/api/assinatura/toggle</code>). Depois será removido.
-      </p>
-    </div>
-  </main>
+      <div style="height:12px"></div>
+      <button id="logout" class="btn ghost" style="width:100%;">Encerrar sessão</button>
+    </aside>
 
-  <script src="./app.js"></script>
-  <script>
-    // Protege a página
-    if (!LF.requireAuth()) {}
-    LF.attachLogout("#logoutLink");
+    <main class="main">
+      <div class="card section">
+        <h2 style="margin:0 0 6px;">Visão geral</h2>
+        <p class="muted" style="margin:0;">
+          Aqui é sua área do aluno. Conteúdo, progresso e afiliado ficam no menu.
+        </p>
+      </div>
 
-    function formatDate(iso){
-      try {
-        const d = new Date(iso);
-        return d.toLocaleString("pt-BR");
-      } catch {
-        return "—";
+      <div style="height:14px"></div>
+
+      <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="card section">
+          <div class="badge">✅ Status</div>
+          <div id="sub" class="muted" style="margin-top:10px;">Carregando…</div>
+        </div>
+
+        <div class="card section">
+          <div class="badge">📌 Próximo passo</div>
+          <p class="muted small" style="margin-top:10px;">
+            Vá em <b>Conteúdo</b> para ver os módulos liberados. Em <b>Afiliado</b> você copia seu link.
+          </p>
+        </div>
+      </div>
+
+      <div id="toast" class="toast"><div class="msg"></div></div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { clearToken, me, requireLogged, requireActive } from "/assets/auth.js";
+    import { toast } from "/assets/ui.js";
+
+    const token = requireLogged();
+
+    document.getElementById("logout").addEventListener("click", () => {
+      clearToken();
+      location.href = "/login.html";
+    });
+
+    async function init(){
+      try{
+        const data = await me();
+        const user = data.user;
+        document.getElementById("who").textContent = `${user.name} • ${user.email}`;
+        if (!requireActive(user.subscription)) return;
+
+        const end = user.subscription.currentPeriodEnd
+          ? new Date(user.subscription.currentPeriodEnd).toLocaleString("pt-BR")
+          : "-";
+
+        document.getElementById("sub").innerHTML = `
+          <div class="badge">Plano: <b>${user.subscription.plan}</b></div>
+          <div class="muted small" style="margin-top:8px;">
+            Status: <b>${user.subscription.status}</b><br/>
+            Renovação automática: <b>${user.subscription.renovacaoAutomatica ? "SIM" : "NÃO"}</b><br/>
+            Vencimento: <b>${end}</b>
+          </div>
+        `;
+      }catch(e){
+        toast("Sessão inválida. Faça login novamente.", "error");
+        clearToken();
+        setTimeout(()=> location.href="/login.html", 800);
       }
     }
 
-    function renderSub(sub){
-      const status = (sub?.status || "inactive").toLowerCase();
-      LF.setText("subStatus", status === "active" ? "ativa" : "inativa");
-      LF.setText("subPlan", sub?.plan || "monthly");
-      LF.setText("subPrice", sub?.price || "1 USDT / mês");
-      LF.setText("subUpdatedAt", sub?.updatedAt ? formatDate(sub.updatedAt) : "—");
-
-      const dot = document.getElementById("subDot");
-      dot.classList.remove("ok","off");
-      dot.classList.add(status === "active" ? "ok" : "off");
-    }
-
-    async function loadSub(){
-      const sub = await LF.apiFetch("/api/assinatura/status");
-      renderSub(sub);
-    }
-
-    document.getElementById("btnToggle").addEventListener("click", async () => {
-      try {
-        await LF.apiFetch("/api/assinatura/toggle", { method: "POST" });
-        await loadSub();
-      } catch (e) {
-        alert("Não foi possível alternar. Verifique se o backend está rodando.");
-      }
-    });
-
-    loadSub().catch(() => {
-      LF.setText("subStatus", "erro ao carregar");
-      const dot = document.getElementById("subDot");
-      dot.classList.remove("ok","off");
-    });
+    init();
   </script>
 </body>
 </html>
