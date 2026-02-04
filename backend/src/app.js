@@ -1,5 +1,6 @@
 // backend/src/app.js (ESM)
 import express from "express";
+import pingRoutes from "./routes/ping.routes.js";
 
 const app = express();
 
@@ -16,7 +17,12 @@ app.use((req, res, next) => {
 });
 
 // =========================
-// Rotas
+// Rotas da API
+// =========================
+app.use("/api", pingRoutes);
+
+// =========================
+// Rotas públicas
 // =========================
 app.get("/", (req, res) => {
   res.status(200).json({
