@@ -1,28 +1,24 @@
-// app.js (ESM)
-import dns from "node:dns/promises";
+// src/app.js (ESM)
+import express from "express";
 
-async function dnsDiagnostics() {
-  const host = "curadamente.b9dsw01.mongodb.net";
-  const srv = `_mongodb._tcp.${host}`;
+const app = express();
 
-  try {
-    const srvRecords = await dns.resolveSrv(srv);
-    console.log("✅ DNS SRV OK:", srvRecords);
-  } catch (e) {
-    console.log("❌ DNS SRV FALHOU:", { code: e.code, hostname: e.hostname, message: e.message });
-  }
+// --- Middlewares básicos
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
 
-  try {
-    const a = await dns.resolve4(host);
-    console.log("✅ DNS A OK:", a);
-  } catch (e) {
-    console.log("⚠️ DNS A falhou:", { code: e.code, message: e.message });
-  }
+// --- Rotas básicas
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: "liberdade-financeira-backend",
+    timestamp: new Date().toISOString(),
+  });
+});
 
-  try {
-    const aaaa = await dns.resolve6(host);
-    console.log("✅ DNS AAAA OK:", aaaa);
-  } catch (e) {
-    console.log("⚠️ DNS AAAA falhou:", { code: e.code, message: e.message });
-  }
-}
+// 404 (opcional, mas útil)
+app.use((req, res) => {
+  res.status(404).json({ ok: false, error: "Rota não encontrada" });
+});
+
+export default app;
