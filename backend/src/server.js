@@ -4,24 +4,59 @@ import mongoose from "mongoose";
 import app from "./app.js";
 
 const PORT = process.env.PORT || 3000;
-const MONGO_URI = process.env.MONGO_URI;
 
-if (!MONGO_URI) {
-  console.error("❌ MONGO_URI não definida nas variáveis de ambiente.");
-  process.exit(1);
+function isSrvDnsError(err) {
+  const msg = String(err?.message || "");
+  return (
+    err?.code === "ENOTFOUND" ||
+    msg.includes("querySrv") ||
+    msg.includes("_mongodb._tcp")
+  );
+}
+
+async function connectDB() {
+  const uriSrv = process.env.MONGO_URI;
+  const uriStd = process.env.MONGO_URI_STANDARD;
+
+  if (!uriSrv && !uriStd) {
+    throw new Error("❌ Defina MONGO_URI e/ou MONGO_URI_STANDARD no Render.");
+  }
+
+  // 1) tenta SRV primeiro
+  if (uriSrv) {
+    try {
+      await mongoose.connect(uriSrv, {
+        serverSelectionTimeoutMS: 15000,
+        autoIndex: false,
+      });
+      console.log("✅ MongoDB conectado via SRV (mongodb+srv).");
+      return;
+    } catch (err) {
+      console.log("⚠️ Falha ao conectar via SRV:", err?.message);
+
+      // só cai pro standard se for erro de DNS/SRV
+      if (!isSrvDnsError(err)) throw err;
+
+      console.log("🧩 Erro SRV/DNS detectado. Tentando STANDARD...");
+    }
+  }
+
+  // 2) fallback STANDARD
+  if (!uriStd) {
+    throw new Error("❌ Falha SRV/DNS e MONGO_URI_STANDARD não está definida.");
+  }
+
+  await mongoose.connect(uriStd, {
+    serverSelectionTimeoutMS: 15000,
+    autoIndex: false,
+  });
+  console.log("✅ MongoDB conectado via STANDARD (mongodb://).");
 }
 
 async function start() {
   try {
-    // Conexão MongoDB (Mongoose)
-    await mongoose.connect(MONGO_URI, {
-      // Node 22 + mongoose moderno: opções são opcionais, mas ok assim
-      autoIndex: false, // boa prática em produção (evita index auto sem controle)
-    });
+    await connectDB();
 
-    console.log("✅ MongoDB conectado");
-
-    // Sobe o servidor
     app.listen(PORT, () => {
       console.log(`✅ API rodando na porta ${PORT}`);
     });
