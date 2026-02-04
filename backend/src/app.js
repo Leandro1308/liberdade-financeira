@@ -1,8 +1,20 @@
 // backend/src/app.js (ESM)
 import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+
 import pingRoutes from "./routes/ping.routes.js";
 
 const app = express();
+
+// =========================
+// Helpers de path (ESM)
+// =========================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Caminho absoluto para a pasta frontend (ajuste se sua pasta tiver outro nome/local)
+const FRONTEND_DIR = path.join(__dirname, "..", "frontend");
 
 // =========================
 // Middlewares básicos
@@ -17,6 +29,12 @@ app.use((req, res, next) => {
 });
 
 // =========================
+// Servir FRONTEND (arquivos estáticos)
+// =========================
+// Isso permite acessar: /assets/app.css, /login.html, /assinatura.html etc.
+app.use(express.static(FRONTEND_DIR));
+
+// =========================
 // Rotas da API
 // =========================
 app.use("/api", pingRoutes);
@@ -24,13 +42,12 @@ app.use("/api", pingRoutes);
 // =========================
 // Rotas públicas
 // =========================
+// Agora "/" serve o frontend bonito (index.html)
 app.get("/", (req, res) => {
-  res.status(200).json({
-    ok: true,
-    message: "API Liberdade Financeira / Curadamente online",
-  });
+  res.sendFile(path.join(FRONTEND_DIR, "index.html"));
 });
 
+// Mantém health como JSON (útil pra monitoramento do Render)
 app.get("/health", (req, res) => {
   res.status(200).json({
     ok: true,
@@ -43,6 +60,14 @@ app.get("/health", (req, res) => {
 // 404 (rota não encontrada)
 // =========================
 app.use((req, res) => {
+  // Se o cliente pedir HTML (navegador), pode cair numa rota de front inexistente
+  // -> devolvemos o index.html para SPA-like (opcional e seguro).
+  const accept = req.headers.accept || "";
+  if (accept.includes("text/html")) {
+    return res.status(404).sendFile(path.join(FRONTEND_DIR, "index.html"));
+  }
+
+  // Caso contrário (API/JSON), mantém o comportamento atual
   res.status(404).json({
     ok: false,
     error: "Rota não encontrada",
