@@ -13,8 +13,9 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Caminho absoluto para a pasta frontend (ajuste se sua pasta tiver outro nome/local)
-const FRONTEND_DIR = path.join(__dirname, "..", "frontend");
+// ✅ Ajuste: repo root -> /frontend
+// (backend/src) -> (backend) -> (repo root) -> (frontend)
+const FRONTEND_DIR = path.join(__dirname, "..", "..", "frontend");
 
 // =========================
 // Middlewares básicos
@@ -60,21 +61,16 @@ app.get("/health", (req, res) => {
 // 404 (rota não encontrada)
 // =========================
 app.use((req, res) => {
-  // Se o cliente pedir HTML (navegador), pode cair numa rota de front inexistente
-  // -> devolvemos o index.html para SPA-like (opcional e seguro).
   const accept = req.headers.accept || "";
   if (accept.includes("text/html")) {
+    // devolve o index pra navegação do navegador
     return res.status(404).sendFile(path.join(FRONTEND_DIR, "index.html"));
   }
 
-  // Caso contrário (API/JSON), mantém o comportamento atual
   res.status(404).json({
     ok: false,
     error: "Rota não encontrada",
   });
 });
 
-// =========================
-// Export default (NECESSÁRIO)
-// =========================
 export default app;
