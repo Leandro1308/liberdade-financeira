@@ -1,13 +1,30 @@
-// src/app.js (ESM)
+// backend/src/app.js (ESM)
 import express from "express";
 
 const app = express();
 
-// --- Middlewares básicos
+// =========================
+// Middlewares básicos
+// =========================
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// --- Rotas básicas
+// (Opcional) log simples de requisições — útil no Render
+app.use((req, res, next) => {
+  console.log(`➡️ ${req.method} ${req.url}`);
+  next();
+});
+
+// =========================
+// Rotas
+// =========================
+app.get("/", (req, res) => {
+  res.status(200).json({
+    ok: true,
+    message: "API Liberdade Financeira / Curadamente online",
+  });
+});
+
 app.get("/health", (req, res) => {
   res.status(200).json({
     ok: true,
@@ -16,9 +33,17 @@ app.get("/health", (req, res) => {
   });
 });
 
-// 404 (opcional, mas útil)
+// =========================
+// 404 (rota não encontrada)
+// =========================
 app.use((req, res) => {
-  res.status(404).json({ ok: false, error: "Rota não encontrada" });
+  res.status(404).json({
+    ok: false,
+    error: "Rota não encontrada",
+  });
 });
 
+// =========================
+// Export default (NECESSÁRIO)
+// =========================
 export default app;
