@@ -1,11 +1,28 @@
-// backend/src/app.js
-import express from "express";
+// app.js (ESM)
+import dns from "node:dns/promises";
 
-const app = express();
+async function dnsDiagnostics() {
+  const host = "curadamente.b9dsw01.mongodb.net";
+  const srv = `_mongodb._tcp.${host}`;
 
-// Healthcheck simples (Render usa muito)
-app.get("/health", (req, res) => {
-  res.status(200).json({ ok: true, service: "liberdade-financeira-backend" });
-});
+  try {
+    const srvRecords = await dns.resolveSrv(srv);
+    console.log("✅ DNS SRV OK:", srvRecords);
+  } catch (e) {
+    console.log("❌ DNS SRV FALHOU:", { code: e.code, hostname: e.hostname, message: e.message });
+  }
 
-export default app;
+  try {
+    const a = await dns.resolve4(host);
+    console.log("✅ DNS A OK:", a);
+  } catch (e) {
+    console.log("⚠️ DNS A falhou:", { code: e.code, message: e.message });
+  }
+
+  try {
+    const aaaa = await dns.resolve6(host);
+    console.log("✅ DNS AAAA OK:", aaaa);
+  } catch (e) {
+    console.log("⚠️ DNS AAAA falhou:", { code: e.code, message: e.message });
+  }
+}
