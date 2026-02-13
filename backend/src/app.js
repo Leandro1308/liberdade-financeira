@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import pingRoutes from "./routes/ping.routes.js";
-import assinaturaRoutes from "./routes/assinatura.js"; // ✅ ADD
+import assinaturaRoutes from "./routes/assinatura.js"; // ✅ assinatura
 
 const app = express();
 
@@ -14,7 +14,6 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Ajuste: repo root -> /frontend
 // (backend/src) -> (backend) -> (repo root) -> (frontend)
 const FRONTEND_DIR = path.join(__dirname, "..", "..", "frontend");
 
@@ -24,33 +23,32 @@ const FRONTEND_DIR = path.join(__dirname, "..", "..", "frontend");
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// (Opcional) log simples de requisições — útil no Render
+// log simples
 app.use((req, res, next) => {
   console.log(`➡️ ${req.method} ${req.url}`);
   next();
 });
 
 // =========================
-// Servir FRONTEND (arquivos estáticos)
+// Servir FRONTEND
 // =========================
-// Isso permite acessar: /assets/app.css, /login.html, /assinatura.html etc.
 app.use(express.static(FRONTEND_DIR));
 
 // =========================
 // Rotas da API
 // =========================
+// ✅ IMPORTANTE: assinatura vem ANTES de /api
+// para não ser "engolida" por um 404 interno do router /api
+app.use("/api/assinatura", assinaturaRoutes);
 app.use("/api", pingRoutes);
-app.use("/api/assinatura", assinaturaRoutes); // ✅ ADD
 
 // =========================
 // Rotas públicas
 // =========================
-// Agora "/" serve o frontend bonito (index.html)
 app.get("/", (req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, "index.html"));
 });
 
-// Mantém health como JSON (útil pra monitoramento do Render)
 app.get("/health", (req, res) => {
   res.status(200).json({
     ok: true,
@@ -60,12 +58,11 @@ app.get("/health", (req, res) => {
 });
 
 // =========================
-// 404 (rota não encontrada)
+// 404
 // =========================
 app.use((req, res) => {
   const accept = req.headers.accept || "";
   if (accept.includes("text/html")) {
-    // devolve o index pra navegação do navegador
     return res.status(404).sendFile(path.join(FRONTEND_DIR, "index.html"));
   }
 
