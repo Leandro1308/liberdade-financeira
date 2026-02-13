@@ -1,34 +1,74 @@
-// backend/src/routes/assinatura.js
-const express = require("express");
-const { authRequired } = require("../middlewares/auth");
-const { readDB, writeDB, nowISO } = require("../lib/db");
+// backend/src/routes/assinatura.js (ESM)
+import express from "express";
+import { authRequired } from "../middleware/auth.js";
+import { User } from "../models/User.js";
+import { ethers } from "ethers";
 
 const router = express.Router();
 
-router.get("/status", authRequired, (req, res) => {
-  const db = readDB();
-  const sub = db.subscriptions.find(s => s.userId === req.user.id);
-  if (!sub) return res.status(404).json({ error: "SUBSCRIPTION_NOT_FOUND" });
+// ================================
+// CONFIG WEB3 (via ENV do Render)
+// ================================
+const RPC_URL = process.env.BSC_RPC_URL;
+const PRIVATE_KEY = process.env.OPERATOR_PRIVATE_KEY;
+const CONTRACT_ADDRESS = process.env.SUBSCRIPTION_CONTRACT;
+const USDT_ADDRESS = process.env.USDT_ADDRESS;
+
+let provider;
+let wallet;
+let contract;
+
+if (RPC_URL && PRIVATE_KEY && CONTRACT_ADDRESS) {
+  provider = new ethers.JsonRpcProvider(RPC_URL);
+  wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+
+  const abi = [
+    "function subscribe(address user, address referrer) external",
+    "function renew(address user) external"
+  ];
+
+  contract = new ethers.Contract(CONTRACT_ADDRESS, abi, wallet);
+}
+
+// ==================================
+// STATUS DA ASSINATURA (MongoDB)
+// ==================================
+router.get("/status", authRequired, async (req, res) => {
+  const user = await User.findById(req.user.id);
 
   res.json({
-    status: sub.status,
-    plan: sub.plan,
-    price: sub.price,
-    updatedAt: sub.updatedAt
+    status: user.subscription.status,
+    plan: user.subscription.plan,
+    renovacaoAutomatica: user.subscription.renovacaoAutomatica,
+    currentPeriodEnd: user.subscription.currentPeriodEnd
   });
 });
 
-// (apenas para teste interno agora) alterna ativo/inativo
-router.post("/toggle", authRequired, (req, res) => {
-  const db = readDB();
-  const sub = db.subscriptions.find(s => s.userId === req.user.id);
-  if (!sub) return res.status(404).json({ error: "SUBSCRIPTION_NOT_FOUND" });
+// ==================================
+// ATIVAÇÃO REAL (FUTURO ON-CHAIN)
+// ==================================
+router.post("/ativar", authRequired, async (req, res) => {
+  try {
+    if (!contract) {
+      return res.status(500).json({ error: "WEB3_NOT_CONFIGURED" });
+    }
 
-  sub.status = sub.status === "active" ? "inactive" : "active";
-  sub.updatedAt = nowISO();
+    const userAddress = req.body.wallet;
+    const referrerAddress = req.body.referrer || ethers.ZeroAddress;
 
-  writeDB(db);
-  res.json({ status: sub.status });
+    const tx = await contract.subscribe(userAddress, referrerAddress);
+    await tx.wait();
+
+    const user = await User.findById(req.user.id);
+    user.subscription.status = "active";
+    user.subscription.currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await user.save();
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "ONCHAIN_ERROR" });
+  }
 });
 
-module.exports = router;
+export default router;
