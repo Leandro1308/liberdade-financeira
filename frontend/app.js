@@ -1,93 +1,71 @@
-// frontend/app.js
-(() => {
-  const API_BASE = window.LF_API_BASE || "http://localhost:3000";
+// backend/src/app.js (ESM)
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 
-  function getToken() {
-    return localStorage.getItem("lf_token");
+import pingRoutes from "./routes/ping.routes.js";
+import assinaturaRoutes from "./routes/assinatura.js"; // 🔥 NOVO
+
+const app = express();
+
+// =========================
+// Helpers de path (ESM)
+// =========================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const FRONTEND_DIR = path.join(__dirname, "..", "..", "frontend");
+
+// =========================
+// Middlewares básicos
+// =========================
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+app.use((req, res, next) => {
+  console.log(`➡️ ${req.method} ${req.url}`);
+  next();
+});
+
+// =========================
+// Servir FRONTEND
+// =========================
+app.use(express.static(FRONTEND_DIR));
+
+// =========================
+// Rotas da API
+// =========================
+app.use("/api", pingRoutes);
+app.use("/api/assinatura", assinaturaRoutes); // 🔥 NOVO
+
+// =========================
+// Rotas públicas
+// =========================
+app.get("/", (req, res) => {
+  res.sendFile(path.join(FRONTEND_DIR, "index.html"));
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: "liberdade-financeira-backend",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// =========================
+// 404
+// =========================
+app.use((req, res) => {
+  const accept = req.headers.accept || "";
+  if (accept.includes("text/html")) {
+    return res.status(404).sendFile(path.join(FRONTEND_DIR, "index.html"));
   }
 
-  function setToken(token) {
-    localStorage.setItem("lf_token", token);
-  }
+  res.status(404).json({
+    ok: false,
+    error: "Rota não encontrada",
+  });
+});
 
-  function clearToken() {
-    localStorage.removeItem("lf_token");
-  }
-
-  async function apiFetch(path, options = {}) {
-    const url = `${API_BASE}${path}`;
-    const headers = Object.assign(
-      { "Content-Type": "application/json" },
-      options.headers || {}
-    );
-
-    const token = getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-
-    const res = await fetch(url, { ...options, headers });
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const err = new Error(data?.error || "REQUEST_FAILED");
-      err.status = res.status;
-      err.data = data;
-      throw err;
-    }
-    return data;
-  }
-
-  function requireAuth() {
-    const token = getToken();
-    if (!token) {
-      window.location.href = "./login.html";
-      return false;
-    }
-    return true;
-  }
-
-  function attachLogout(selectorOrId = "#logoutLink") {
-    const el = document.querySelector(selectorOrId);
-    if (!el) return;
-    el.addEventListener("click", (e) => {
-      e.preventDefault();
-      clearToken();
-      window.location.href = "./index.html";
-    });
-  }
-
-  // Helpers
-  function setText(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value ?? "";
-  }
-
-  async function login(email, password) {
-    const { token } = await apiFetch("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password })
-    });
-    setToken(token);
-    return token;
-  }
-
-  async function register(email, password) {
-    const { user } = await apiFetch("/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ email, password })
-    });
-    return user;
-  }
-
-  window.LF = {
-    API_BASE,
-    getToken,
-    setToken,
-    clearToken,
-    apiFetch,
-    requireAuth,
-    attachLogout,
-    setText,
-    login,
-    register
-  };
-})();
+export default app;
