@@ -4,9 +4,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import pingRoutes from "./routes/ping.routes.js";
-import assinaturaRoutes from "./routes/assinatura.js";
+import authRoutes from "./routes/auth.js";
 import meRoutes from "./routes/me.js";
-import authRoutes from "./routes/auth.js"; // ✅ ADICIONADO
+import assinaturaRoutes from "./routes/assinatura.js";
 
 const app = express();
 
@@ -39,9 +39,11 @@ app.use(express.static(FRONTEND_DIR));
 // =========================
 // Rotas da API
 // =========================
-app.use("/api/auth", authRoutes);            // ✅ NOVO: register/login/activate
-app.use("/api/assinatura", assinaturaRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/me", meRoutes);
+app.use("/api/assinatura", assinaturaRoutes);
+
+// mantém ping como já estava
 app.use("/api", pingRoutes);
 
 // =========================
@@ -51,6 +53,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, "index.html"));
 });
 
+// health
 app.get("/health", (req, res) => {
   res.status(200).json({
     ok: true,
