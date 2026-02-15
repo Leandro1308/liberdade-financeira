@@ -4,17 +4,13 @@ import mongoose from "mongoose";
 import app from "./app.js";
 
 import { User } from "./models/User.js";
-import { getSubscriptionContract, checkRpcHealthy } from "./services/web3.js";
+import { getSubscriptionContract } from "./services/web3.js";
 
 const PORT = process.env.PORT || 3000;
 
 function isSrvDnsError(err) {
   const msg = String(err?.message || "");
-  return (
-    err?.code === "ENOTFOUND" ||
-    msg.includes("querySrv") ||
-    msg.includes("_mongodb._tcp")
-  );
+  return err?.code === "ENOTFOUND" || msg.includes("querySrv") || msg.includes("_mongodb._tcp");
 }
 
 async function connectDB() {
@@ -73,16 +69,9 @@ async function runRenewalTick() {
 
     if (!hasWeb3) return;
 
-    // ✅ se RPC estiver fora, não faz nada (evita spam infinito)
-    const rpc = await checkRpcHealthy({ timeoutMs: 3500 });
-    if (!rpc.ok) {
-      console.log(
-        `⚠️ RenewalTick: RPC indisponível, pulando. (${rpc.error || "unknown"})`
-      );
-      return;
-    }
+    // ✅ agora é async (com healthcheck/timeout/cooldown)
+    const contract = await getSubscriptionContract();
 
-    const contract = getSubscriptionContract();
     const cycleSecondsRaw = await contract.cycleSeconds();
     const cycleSeconds = Number(cycleSecondsRaw.toString());
 
@@ -92,7 +81,7 @@ async function runRenewalTick() {
       "subscription.status": { $in: ["active", "past_due"] },
       "subscription.renovacaoAutomatica": true,
       "subscription.currentPeriodEnd": { $ne: null, $lte: now },
-      walletAddress: { $ne: null }
+      walletAddress: { $ne: null },
     })
       .select("_id walletAddress subscription")
       .limit(50)
@@ -114,22 +103,19 @@ async function runRenewalTick() {
           {
             $set: {
               "subscription.status": "active",
-              "subscription.currentPeriodEnd": newEnd
-            }
+              "subscription.currentPeriodEnd": newEnd,
+            },
           }
         );
 
         console.log(`✅ Renew OK: ${u.walletAddress} -> ${newEnd.toISOString()}`);
       } catch (e) {
-        await User.updateOne(
-          { _id: u._id },
-          { $set: { "subscription.status": "past_due" } }
-        );
-
+        await User.updateOne({ _id: u._id }, { $set: { "subscription.status": "past_due" } });
         console.log(`⚠️ Renew FAIL: ${u.walletAddress} :: ${e?.message || e}`);
       }
     }
   } catch (e) {
+    // ✅ Se RPC cair, não derruba o servidor — só loga e tenta no próximo tick
     console.log("⚠️ RenewalTick error:", e?.message || e);
   } finally {
     renewalRunning = false;
@@ -142,30 +128,16 @@ function startRenewalWorker() {
   console.log("🧠 Renewal worker ativo (10min).");
 }
 
-// ================================
-// Start: porta primeiro (Render detecta)
-// ================================
-let serverStarted = false;
-
-function startListeningOnce() {
-  if (serverStarted) return;
-
-  app.listen(PORT, () => {
-    console.log(`✅ API rodando na porta ${PORT}`);
-  });
-
-  serverStarted = true;
-}
-
 async function start() {
   try {
-    // ✅ 1) ABRE PORTA IMEDIATO
-    startListeningOnce();
-
-    // ✅ 2) Conecta DB (sem impedir Render)
+    // ✅ Mantive connectDB antes do listen (como você já tinha)
+    // Se você quiser, depois podemos fazer "listen primeiro" sem quebrar nada.
     await connectDB();
 
-    // ✅ 3) Worker após DB
+    app.listen(PORT, () => {
+      console.log(`✅ API rodando na porta ${PORT}`);
+    });
+
     startRenewalWorker();
   } catch (err) {
     console.error("❌ Erro ao iniciar o servidor:", err);
