@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import app from "./app.js";
 
 import { User } from "./models/User.js";
-import { getSubscriptionContract } from "./services/web3.js";
+import { getSubscriptionContract, checkRpcHealthy } from "./services/web3.js";
 
 const PORT = process.env.PORT || 3000;
 
@@ -73,6 +73,15 @@ async function runRenewalTick() {
 
     if (!hasWeb3) return;
 
+    // ✅ se RPC estiver fora, não faz nada (evita spam infinito)
+    const rpc = await checkRpcHealthy({ timeoutMs: 3500 });
+    if (!rpc.ok) {
+      console.log(
+        `⚠️ RenewalTick: RPC indisponível, pulando. (${rpc.error || "unknown"})`
+      );
+      return;
+    }
+
     const contract = getSubscriptionContract();
     const cycleSecondsRaw = await contract.cycleSeconds();
     const cycleSeconds = Number(cycleSecondsRaw.toString());
@@ -133,14 +142,30 @@ function startRenewalWorker() {
   console.log("🧠 Renewal worker ativo (10min).");
 }
 
+// ================================
+// Start: porta primeiro (Render detecta)
+// ================================
+let serverStarted = false;
+
+function startListeningOnce() {
+  if (serverStarted) return;
+
+  app.listen(PORT, () => {
+    console.log(`✅ API rodando na porta ${PORT}`);
+  });
+
+  serverStarted = true;
+}
+
 async function start() {
   try {
+    // ✅ 1) ABRE PORTA IMEDIATO
+    startListeningOnce();
+
+    // ✅ 2) Conecta DB (sem impedir Render)
     await connectDB();
 
-    app.listen(PORT, () => {
-      console.log(`✅ API rodando na porta ${PORT}`);
-    });
-
+    // ✅ 3) Worker após DB
     startRenewalWorker();
   } catch (err) {
     console.error("❌ Erro ao iniciar o servidor:", err);
