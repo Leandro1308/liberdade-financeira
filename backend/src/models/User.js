@@ -1,11 +1,14 @@
 import mongoose from "mongoose";
 
-const SubscriptionSchema = new mongoose.Schema({
-  plan: { type: String, default: "mensal" },
-  status: validatedEnum(["inactive", "active", "past_due", "canceled"], "inactive"),
-  renovacaoAutomatica: { type: Boolean, default: true },
-  currentPeriodEnd: { type: Date, default: null }
-}, { _id: false });
+const SubscriptionSchema = new mongoose.Schema(
+  {
+    plan: { type: String, default: "mensal" },
+    status: validatedEnum(["inactive", "active", "past_due", "canceled"], "inactive"),
+    renovacaoAutomatica: { type: Boolean, default: true },
+    currentPeriodEnd: { type: Date, default: null }
+  },
+  { _id: false }
+);
 
 function validatedEnum(values, def) {
   return { type: String, enum: values, default: def };
@@ -18,6 +21,9 @@ const UserSchema = new mongoose.Schema({
 
   affiliateCode: { type: String, unique: true, required: true },
   referrerCode: { type: String, default: null },
+
+  // ✅ NOVO: carteira do usuário para approve 1x e renovações gasless
+  walletAddress: { type: String, default: null, trim: true },
 
   subscription: { type: SubscriptionSchema, default: () => ({}) },
 
