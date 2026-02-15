@@ -1,6 +1,5 @@
 // backend/src/config/env.js (ESM)
 // Este arquivo existe para atender o import do middleware/auth.js
-// Sem ele, o Render cai com ERR_MODULE_NOT_FOUND.
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || "production",
@@ -8,6 +7,7 @@ export const env = {
 
   // Auth
   JWT_SECRET: process.env.JWT_SECRET || "",
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d", // ✅ ADICIONADO (fallback)
 
   // Web3 (usado na assinatura)
   BSC_RPC_URL: process.env.BSC_RPC_URL || "",
@@ -20,6 +20,11 @@ export const env = {
 if (!env.JWT_SECRET) {
   console.warn("⚠️ ENV: JWT_SECRET não definido. Login/autenticação irão falhar.");
 }
+if (!env.JWT_EXPIRES_IN) {
+  console.warn("⚠️ ENV: JWT_EXPIRES_IN não definido. Usando fallback.");
+}
 if (!env.BSC_RPC_URL || !env.OPERATOR_PRIVATE_KEY || !env.SUBSCRIPTION_CONTRACT) {
-  console.warn("⚠️ ENV: WEB3 incompleto (BSC_RPC_URL / OPERATOR_PRIVATE_KEY / SUBSCRIPTION_CONTRACT). Rotas on-chain não funcionarão.");
+  console.warn(
+    "⚠️ ENV: WEB3 incompleto (BSC_RPC_URL / OPERATOR_PRIVATE_KEY / SUBSCRIPTION_CONTRACT). Rotas on-chain não funcionarão."
+  );
 }
