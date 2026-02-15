@@ -2,6 +2,14 @@
 import { ethers } from "ethers";
 import { env } from "../config/env.js";
 
+/**
+ * Objetivo:
+ * - NÃO criar provider/contract no topo (durante import)
+ * - Lazy init sob demanda
+ * - Evitar loop infinito de "failed to detect network"
+ * - Se RPC cair: rotas on-chain retornam 503 (sem derrubar servidor)
+ */
+
 const SUBSCRIPTION_ABI = [
   "function subscribe(address user, address directReferrer) external",
   "function renew(address user) external",
@@ -19,99 +27,148 @@ const ERC20_ABI = [
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 value) returns (bool)",
   "function decimals() view returns (uint8)",
+  "function balanceOf(address owner) view returns (uint256)",
 ];
 
-// =========================
-// Lazy singletons (NUNCA no topo com chamadas RPC)
-// =========================
-let _provider = null;
-let _operatorWallet = null;
-let _subscriptionContract = null;
+const BSC_NETWORK = { name: "bsc", chainId: env.BSC_CHAIN_ID || 56 };
 
-// Timeout helper (não depende do ethers)
-function withTimeout(promise, ms, label = "timeout") {
-  let t;
-  const timeout = new Promise((_, reject) => {
-    t = setTimeout(() => reject(new Error(label)), ms);
+// cache (lazy)
+let _provider = null;
+let _operator = null;
+let _subscription = null;
+
+// cooldown de falha (pra não spammar logs / não criar provider a cada request)
+let _lastRpcFailAt = 0;
+let _lastRpcFailMsg = "";
+let _failCount = 0;
+
+function nowMs() {
+  return Date.now();
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function withTimeout(promise, ms, code = "TIMEOUT") {
+  let timer;
+  const timeout = new Promise((_, rej) => {
+    timer = setTimeout(() => rej(Object.assign(new Error(code), { code })), ms);
   });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function isWeb3ReadyEnv() {
+  return !!env.BSC_RPC_URL && !!env.OPERATOR_PRIVATE_KEY && !!env.SUBSCRIPTION_CONTRACT;
+}
+
+export function getWeb3State() {
+  return {
+    hasEnv: isWeb3ReadyEnv(),
+    lastRpcFailAt: _lastRpcFailAt || null,
+    lastRpcFailMsg: _lastRpcFailMsg || null,
+    failCount: _failCount,
+  };
+}
+
+function shouldCooldown() {
+  const cooldownMs = env.WEB3_COOLDOWN_MS ?? 30_000;
+  if (!_lastRpcFailAt) return false;
+  return nowMs() - _lastRpcFailAt < cooldownMs;
+}
+
+function markRpcFail(err) {
+  _lastRpcFailAt = nowMs();
+  _lastRpcFailMsg = String(err?.message || err || "RPC_FAIL");
+  _failCount += 1;
+}
+
+function clearRpcFail() {
+  _lastRpcFailAt = 0;
+  _lastRpcFailMsg = "";
+  _failCount = 0;
 }
 
 /**
- * ✅ Provider lazy + rede fixa (BSC mainnet)
- * staticNetwork evita "detect network" em loop.
- * NÃO faz chamadas RPC aqui (não trava boot).
+ * Lazy: cria provider só quando for realmente necessário.
+ * Importante: passa network explícita para reduzir "detect network" agressivo.
  */
-export function getProvider() {
-  if (_provider) return _provider;
-
+export function getProviderLazy() {
   if (!env.BSC_RPC_URL) throw new Error("ENV_BSC_RPC_URL_MISSING");
 
-  const network = { chainId: 56, name: "bsc" };
+  if (_provider) return _provider;
 
-  // Ethers v6
-  _provider = new ethers.JsonRpcProvider(env.BSC_RPC_URL, network, {
-    staticNetwork: true,
-  });
-
+  // network explícita evita parte do "startup detect network"
+  _provider = new ethers.JsonRpcProvider(env.BSC_RPC_URL, BSC_NETWORK);
   return _provider;
 }
 
-export function getOperatorWallet() {
-  if (_operatorWallet) return _operatorWallet;
-
-  if (!env.OPERATOR_PRIVATE_KEY) throw new Error("ENV_OPERATOR_PRIVATE_KEY_MISSING");
-
-  const provider = getProvider();
-  _operatorWallet = new ethers.Wallet(env.OPERATOR_PRIVATE_KEY, provider);
-  return _operatorWallet;
-}
-
-export function getSubscriptionContract() {
-  if (_subscriptionContract) return _subscriptionContract;
-
-  if (!env.SUBSCRIPTION_CONTRACT) throw new Error("ENV_SUBSCRIPTION_CONTRACT_MISSING");
-
-  const signer = getOperatorWallet();
-  _subscriptionContract = new ethers.Contract(
-    env.SUBSCRIPTION_CONTRACT,
-    SUBSCRIPTION_ABI,
-    signer
-  );
-
-  return _subscriptionContract;
-}
-
-export function getErc20(tokenAddress, signerOrProvider) {
-  const p = signerOrProvider || getProvider();
-  return new ethers.Contract(tokenAddress, ERC20_ABI, p);
-}
-
 /**
- * ✅ Checa se o RPC está saudável com timeout.
- * Isso é chamado SOMENTE sob demanda (rotas/worker).
- * Se cair, retorna ok:false e a aplicação continua viva.
+ * Healthcheck do RPC com timeout.
+ * Se cair, não trava o servidor: apenas sinaliza indisponível.
  */
-export async function checkRpcHealthy({ timeoutMs } = {}) {
-  const ms =
-    typeof timeoutMs === "number" && Number.isFinite(timeoutMs)
-      ? timeoutMs
-      : env.BSC_RPC_TIMEOUT_MS || 3500;
+export async function assertRpcReady() {
+  if (!isWeb3ReadyEnv()) throw new Error("WEB3_ENV_INCOMPLETE");
+  if (shouldCooldown()) {
+    const e = new Error("WEB3_RPC_COOLDOWN");
+    e.code = "WEB3_RPC_COOLDOWN";
+    throw e;
+  }
 
   try {
-    const provider = getProvider();
-    const bn = await withTimeout(provider.getBlockNumber(), ms, "rpc_timeout");
-    return { ok: true, blockNumber: bn };
-  } catch (e) {
-    return { ok: false, error: e?.message || String(e) };
+    const provider = getProviderLazy();
+    const timeoutMs = env.WEB3_RPC_TIMEOUT_MS ?? 2500;
+
+    // operação leve para validar RPC (sem ficar em loop)
+    await withTimeout(provider.getBlockNumber(), timeoutMs, "WEB3_RPC_TIMEOUT");
+
+    clearRpcFail();
+    return true;
+  } catch (err) {
+    markRpcFail(err);
+
+    // limpa instâncias para tentar recriar depois (quando o RPC voltar)
+    _provider = null;
+    _operator = null;
+    _subscription = null;
+
+    const e = new Error("WEB3_UNAVAILABLE");
+    e.code = "WEB3_UNAVAILABLE";
+    e.details = String(err?.message || err);
+    throw e;
   }
 }
 
+export function getOperatorWalletLazy() {
+  if (!env.OPERATOR_PRIVATE_KEY) throw new Error("ENV_OPERATOR_PRIVATE_KEY_MISSING");
+  if (_operator) return _operator;
+
+  const provider = getProviderLazy();
+  _operator = new ethers.Wallet(env.OPERATOR_PRIVATE_KEY, provider);
+  return _operator;
+}
+
 /**
- * Opcional para debug (não usado pelo app)
+ * Retorna contrato PRONTO, mas só depois de validar RPC (com timeout).
  */
-export function resetWeb3() {
-  _provider = null;
-  _operatorWallet = null;
-  _subscriptionContract = null;
+export async function getSubscriptionContract() {
+  if (!env.SUBSCRIPTION_CONTRACT) throw new Error("ENV_SUBSCRIPTION_CONTRACT_MISSING");
+
+  await assertRpcReady();
+
+  if (_subscription) return _subscription;
+
+  const signer = getOperatorWalletLazy();
+  _subscription = new ethers.Contract(env.SUBSCRIPTION_CONTRACT, SUBSCRIPTION_ABI, signer);
+  return _subscription;
+}
+
+/**
+ * ERC20 pode ser com provider (read-only) ou signer.
+ * Aqui mantemos lazy também. (sem cache de tokens por enquanto, mas dá pra adicionar depois)
+ */
+export async function getErc20(tokenAddress, signerOrProvider = null) {
+  await assertRpcReady();
+  const p = signerOrProvider || getProviderLazy();
+  return new ethers.Contract(tokenAddress, ERC20_ABI, p);
 }
