@@ -5,43 +5,30 @@ import { ethers } from "ethers";
 
 import { requireAuth } from "../middleware/auth.js";
 import { User } from "../models/User.js";
-import {
-  getSubscriptionContract,
-  getErc20,
-  checkRpcHealthy
-} from "../services/web3.js";
+import { getSubscriptionContract, getErc20, getWeb3State } from "../services/web3.js";
 
 const router = Router();
 
 const SubscribeSchema = z.object({
   walletAddress: z.string().min(10),
-  referrerCode: z.string().min(3).max(40).optional().nullable()
+  referrerCode: z.string().min(3).max(40).optional().nullable(),
 });
 
-async function ensureRpcOr503(res) {
-  const health = await checkRpcHealthy({ timeoutMs: 3500 });
-
-  if (!health.ok) {
-    res.status(503).json({
-      ok: false,
-      code: "RPC_UNAVAILABLE",
-      message:
-        "Módulo on-chain indisponível no momento (RPC fora do ar). Tente novamente em instantes.",
-      details: health.error
-    });
-    return false;
-  }
-
-  return true;
+// helper: resposta padronizada quando Web3/RPC estiver fora
+function web3Unavailable(res, extra = null) {
+  const state = getWeb3State();
+  return res.status(503).json({
+    ok: false,
+    error: "WEB3_UNAVAILABLE",
+    message: "Rede blockchain indisponível no momento. Tente novamente em instantes.",
+    details: extra || state?.lastRpcFailMsg || null,
+  });
 }
 
 // ✅ params públicos: preço, taxa, token, etc.
 router.get("/params", async (req, res) => {
   try {
-    const ok = await ensureRpcOr503(res);
-    if (!ok) return;
-
-    const c = getSubscriptionContract();
+    const c = await getSubscriptionContract();
 
     const [price, txFeeBps, cycleSeconds, token, treasury, gasVault] = await Promise.all([
       c.price(),
@@ -49,20 +36,24 @@ router.get("/params", async (req, res) => {
       c.cycleSeconds(),
       c.token(),
       c.treasury(),
-      c.gasVault()
+      c.gasVault(),
     ]);
 
     return res.json({
       ok: true,
-      contractAddress: c.target, // ✅ approve no frontend
+      contractAddress: c.target, // ethers v6
       token,
       treasury,
       gasVault,
       price: price.toString(),
       txFeeBps: Number(txFeeBps),
-      cycleSeconds: cycleSeconds.toString()
+      cycleSeconds: cycleSeconds.toString(),
     });
   } catch (e) {
+    const code = e?.code || e?.message;
+    if (code === "WEB3_UNAVAILABLE" || code === "WEB3_RPC_COOLDOWN" || code === "WEB3_RPC_TIMEOUT") {
+      return web3Unavailable(res, e?.details || e?.message);
+    }
     console.error("assinatura/params error:", e?.message || e);
     return res.status(500).json({ ok: false, error: "PARAMS_UNAVAILABLE" });
   }
@@ -73,7 +64,7 @@ router.get("/status", requireAuth, async (req, res) => {
   return res.json({
     ok: true,
     subscription: req.user.subscription,
-    walletAddress: req.user.walletAddress || null
+    walletAddress: req.user.walletAddress || null,
   });
 });
 
@@ -81,9 +72,6 @@ router.get("/status", requireAuth, async (req, res) => {
 router.post("/subscribe", requireAuth, async (req, res) => {
   const parsed = SubscribeSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados inválidos" });
-
-  const ok = await ensureRpcOr503(res);
-  if (!ok) return;
 
   const userId = req.user._id.toString();
 
@@ -111,11 +99,11 @@ router.post("/subscribe", requireAuth, async (req, res) => {
   }
 
   try {
-    const c = getSubscriptionContract();
+    const c = await getSubscriptionContract();
 
     // valida allowance mínima antes de gastar gas
     const tokenAddress = await c.token();
-    const erc20 = getErc20(tokenAddress); // provider read-only
+    const erc20 = await getErc20(tokenAddress); // provider read-only
 
     const [priceRaw, txFeeBpsRaw] = await Promise.all([c.price(), c.txFeeBps()]);
     const price = BigInt(priceRaw.toString());
@@ -148,8 +136,8 @@ router.post("/subscribe", requireAuth, async (req, res) => {
         $set: {
           "subscription.plan": "mensal",
           "subscription.status": "active",
-          "subscription.currentPeriodEnd": end
-        }
+          "subscription.currentPeriodEnd": end,
+        },
       }
     );
 
@@ -159,31 +147,15 @@ router.post("/subscribe", requireAuth, async (req, res) => {
       subscription: {
         plan: "mensal",
         status: "active",
-        currentPeriodEnd: end
-      }
+        currentPeriodEnd: end,
+      },
     });
   } catch (e) {
-    console.error("assinatura/subscribe error:", e?.message || e);
-
-    // ✅ Se falhar por RPC/rede, retorna 503 (controlado)
-    const msg = String(e?.message || e);
-    if (
-      msg.includes("rpc") ||
-      msg.includes("timeout") ||
-      msg.includes("ECONN") ||
-      msg.includes("ENOTFOUND") ||
-      msg.includes("failed to fetch") ||
-      msg.includes("network") ||
-      msg.includes("detect network")
-    ) {
-      return res.status(503).json({
-        ok: false,
-        code: "RPC_UNAVAILABLE",
-        message:
-          "Módulo on-chain indisponível no momento (RPC fora do ar). Tente novamente em instantes."
-      });
+    const code = e?.code || e?.message;
+    if (code === "WEB3_UNAVAILABLE" || code === "WEB3_RPC_COOLDOWN" || code === "WEB3_RPC_TIMEOUT") {
+      return web3Unavailable(res, e?.details || e?.message);
     }
-
+    console.error("assinatura/subscribe error:", e?.message || e);
     return res.status(500).json({ error: "SUBSCRIBE_FAILED" });
   }
 });
