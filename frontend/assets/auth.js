@@ -32,9 +32,10 @@ export async function register(name, email, password, ref=null) {
   return data;
 }
 
-export async function activateMock() {
+// ✅ NOVO: salva carteira no backend
+export async function saveWallet(walletAddress) {
   const token = getToken();
-  return api("/api/auth/activate", { method:"POST", token });
+  return api("/api/me/wallet", { method:"POST", token, body:{ walletAddress } });
 }
 
 export function requireLogged() {
