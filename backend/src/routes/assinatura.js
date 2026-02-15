@@ -5,7 +5,11 @@ import { ethers } from "ethers";
 
 import { requireAuth } from "../middleware/auth.js";
 import { User } from "../models/User.js";
-import { getSubscriptionContract, getErc20 } from "../services/web3.js";
+import {
+  getSubscriptionContract,
+  getErc20,
+  checkRpcHealthy
+} from "../services/web3.js";
 
 const router = Router();
 
@@ -14,9 +18,29 @@ const SubscribeSchema = z.object({
   referrerCode: z.string().min(3).max(40).optional().nullable()
 });
 
+async function ensureRpcOr503(res) {
+  const health = await checkRpcHealthy({ timeoutMs: 3500 });
+
+  if (!health.ok) {
+    res.status(503).json({
+      ok: false,
+      code: "RPC_UNAVAILABLE",
+      message:
+        "Módulo on-chain indisponível no momento (RPC fora do ar). Tente novamente em instantes.",
+      details: health.error
+    });
+    return false;
+  }
+
+  return true;
+}
+
 // ✅ params públicos: preço, taxa, token, etc.
 router.get("/params", async (req, res) => {
   try {
+    const ok = await ensureRpcOr503(res);
+    if (!ok) return;
+
     const c = getSubscriptionContract();
 
     const [price, txFeeBps, cycleSeconds, token, treasury, gasVault] = await Promise.all([
@@ -30,7 +54,7 @@ router.get("/params", async (req, res) => {
 
     return res.json({
       ok: true,
-      contractAddress: c.target, // ✅ importante pro approve no frontend
+      contractAddress: c.target, // ✅ approve no frontend
       token,
       treasury,
       gasVault,
@@ -57,6 +81,9 @@ router.get("/status", requireAuth, async (req, res) => {
 router.post("/subscribe", requireAuth, async (req, res) => {
   const parsed = SubscribeSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Dados inválidos" });
+
+  const ok = await ensureRpcOr503(res);
+  if (!ok) return;
 
   const userId = req.user._id.toString();
 
@@ -137,6 +164,26 @@ router.post("/subscribe", requireAuth, async (req, res) => {
     });
   } catch (e) {
     console.error("assinatura/subscribe error:", e?.message || e);
+
+    // ✅ Se falhar por RPC/rede, retorna 503 (controlado)
+    const msg = String(e?.message || e);
+    if (
+      msg.includes("rpc") ||
+      msg.includes("timeout") ||
+      msg.includes("ECONN") ||
+      msg.includes("ENOTFOUND") ||
+      msg.includes("failed to fetch") ||
+      msg.includes("network") ||
+      msg.includes("detect network")
+    ) {
+      return res.status(503).json({
+        ok: false,
+        code: "RPC_UNAVAILABLE",
+        message:
+          "Módulo on-chain indisponível no momento (RPC fora do ar). Tente novamente em instantes."
+      });
+    }
+
     return res.status(500).json({ error: "SUBSCRIBE_FAILED" });
   }
 });
