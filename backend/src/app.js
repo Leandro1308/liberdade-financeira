@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 
 import pingRoutes from "./routes/ping.routes.js";
 import assinaturaRoutes from "./routes/assinatura.js"; // ✅ assinatura
+import meRoutes from "./routes/me.js"; // ✅ ADICIONADO: rota /api/me
 
 const app = express();
 
@@ -40,6 +41,10 @@ app.use(express.static(FRONTEND_DIR));
 // ✅ IMPORTANTE: assinatura vem ANTES de /api
 // para não ser "engolida" por um 404 interno do router /api
 app.use("/api/assinatura", assinaturaRoutes);
+
+// ✅ ADICIONADO: /api/me (usado pelo frontend em assinatura.html)
+app.use("/api/me", meRoutes);
+
 app.use("/api", pingRoutes);
 
 // =========================
