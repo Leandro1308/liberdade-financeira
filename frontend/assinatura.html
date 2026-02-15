@@ -30,6 +30,33 @@
 
         <div style="height:14px"></div>
 
+        <!-- ✅ NOVO: orientação antes de conectar -->
+        <div class="card" style="padding:14px; border:1px solid rgba(255,255,255,.08); margin-bottom:12px;">
+          <div style="font-weight:700; margin-bottom:6px;">Antes de conectar sua carteira</div>
+          <div class="muted small">
+            1) Crie sua carteira na MetaMask (se ainda não tiver) e <b>guarde sua frase-semente</b> com segurança.<br/>
+            2) Coloque saldo na carteira:<br/>
+            • <b>BNB</b> para pagar o gás (recomendado: <b>0,005 BNB</b> | mínimo: <b>0,002 BNB</b>)<br/>
+            • <b>USDT (BEP-20)</b> para pagar a assinatura<br/><br/>
+            <b>Importante:</b> você paga gás apenas no <b>approve</b> (1x). A assinatura (subscribe) é <b>gasless</b> e o operador paga o gás.
+          </div>
+
+          <div style="height:10px"></div>
+
+          <div id="checklist" class="muted small" style="line-height:1.8;">
+            • MetaMask: <span id="ckMetamask">verificando…</span><br/>
+            • Rede: <span id="ckNetwork">verificando…</span><br/>
+            • Saldo BNB: <span id="ckBNB">verificando…</span><br/>
+            • Saldo USDT: <span id="ckUSDT">verificando…</span><br/>
+          </div>
+
+          <div style="height:10px"></div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="btnFixNetwork" class="btn" type="button">Trocar para BNB Smart Chain</button>
+            <button id="btnRefreshBalances" class="btn" type="button">Verificar saldos</button>
+          </div>
+        </div>
+
         <button id="btnConnect" class="btn">Conectar carteira</button>
 
         <div style="height:10px"></div>
@@ -71,8 +98,31 @@
     const planInfo = document.getElementById("planInfo");
     const walletBox = document.getElementById("walletBox");
 
+    const ckMetamask = document.getElementById("ckMetamask");
+    const ckNetwork = document.getElementById("ckNetwork");
+    const ckBNB = document.getElementById("ckBNB");
+    const ckUSDT = document.getElementById("ckUSDT");
+
+    const btnApprove = document.getElementById("btnApprove");
+    const btnSubscribe = document.getElementById("btnSubscribe");
+
     let params = null;
     let connectedWallet = null;
+
+    const BSC_CHAIN_ID_HEX = "0x38"; // 56
+    const BNB_MIN = 0.002;
+    const BNB_RECOMMENDED = 0.005;
+
+    function setOk(el, ok, textOk, textBad){
+      el.innerHTML = ok ? `<b style="color:#7CFFB2">${textOk}</b>` : `<b style="color:#FF7C7C">${textBad}</b>`;
+    }
+
+    function disableFlow(disabled){
+      btnApprove.disabled = disabled;
+      btnSubscribe.disabled = disabled;
+      btnApprove.style.opacity = disabled ? 0.6 : 1;
+      btnSubscribe.style.opacity = disabled ? 0.6 : 1;
+    }
 
     async function loadStatus(){
       try{
@@ -96,8 +146,133 @@
         const feePct = ((params.txFeeBps || 0) / 100).toFixed(2);
 
         planInfo.textContent = `Taxa gasVault: ${feePct}% | Contrato: ${params.contractAddress.slice(0,6)}…${params.contractAddress.slice(-4)}`;
+
       }catch(e){
-        planInfo.textContent = "Parâmetros indisponíveis.";
+        // se backend retornar 503, mostramos mensagem amigável
+        planInfo.textContent = "Parâmetros indisponíveis (rede temporariamente fora).";
+      }
+    }
+
+    async function ensureBscNetwork(){
+      if (!window.ethereum) {
+        toast("MetaMask não encontrado.", "error");
+        return false;
+      }
+
+      try{
+        const chainId = await window.ethereum.request({ method: "eth_chainId" });
+        if (chainId === BSC_CHAIN_ID_HEX) return true;
+
+        // tenta trocar
+        try{
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: BSC_CHAIN_ID_HEX }]
+          });
+          return true;
+        } catch (switchErr){
+          // se a rede não existir, tenta adicionar
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: BSC_CHAIN_ID_HEX,
+              chainName: "BNB Smart Chain",
+              nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+              rpcUrls: ["https://bsc-dataseed.binance.org/"],
+              blockExplorerUrls: ["https://bscscan.com"]
+            }]
+          });
+          return true;
+        }
+      }catch(e){
+        toast("Não foi possível trocar/adicionar a rede BSC.", "error");
+        return false;
+      }
+    }
+
+    async function refreshChecklist(){
+      // MetaMask
+      const hasMM = !!window.ethereum;
+      setOk(ckMetamask, hasMM, "detectada", "não encontrada");
+      if (!hasMM) {
+        setOk(ckNetwork, false, "", "—");
+        setOk(ckBNB, false, "", "—");
+        setOk(ckUSDT, false, "", "—");
+        disableFlow(true);
+        return;
+      }
+
+      // Rede
+      let onBsc = false;
+      try{
+        const chainId = await window.ethereum.request({ method: "eth_chainId" });
+        onBsc = chainId === BSC_CHAIN_ID_HEX;
+      }catch{}
+      setOk(ckNetwork, onBsc, "BNB Smart Chain", "rede incorreta");
+      if (!onBsc) {
+        disableFlow(true);
+        return;
+      }
+
+      // Saldos (só se carteira conectada)
+      if (!connectedWallet) {
+        setOk(ckBNB, false, "", "conecte a carteira");
+        setOk(ckUSDT, false, "", "conecte a carteira");
+        disableFlow(true);
+        return;
+      }
+
+      try{
+        const { ethers } = await import("https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm");
+        const provider = new ethers.BrowserProvider(window.ethereum);
+
+        const bnbWei = await provider.getBalance(connectedWallet);
+        const bnb = Number(ethers.formatEther(bnbWei));
+
+        const bnbOk = bnb >= BNB_MIN;
+        const bnbTxt = `${bnb.toFixed(5)} BNB`;
+        const bnbBad = `${bnbTxt} (mín: ${BNB_MIN} | rec: ${BNB_RECOMMENDED})`;
+        setOk(ckBNB, bnbOk, bnbTxt, bnbBad);
+
+        // USDT só se params carregados
+        if (!params?.token) {
+          setOk(ckUSDT, false, "", "aguarde parâmetros");
+          disableFlow(true);
+          return;
+        }
+
+        const erc20Abi = [
+          "function balanceOf(address owner) view returns (uint256)",
+          "function decimals() view returns (uint8)"
+        ];
+        const usdt = new ethers.Contract(params.token, erc20Abi, provider);
+
+        const [decimals, balRaw] = await Promise.all([usdt.decimals(), usdt.balanceOf(connectedWallet)]);
+        const bal = Number(ethers.formatUnits(balRaw, decimals));
+
+        // total estimado (price + fee) em unidades do token
+        const price = BigInt(params.price);
+        const feeBps = BigInt(params.txFeeBps || 0);
+        const total = (price * (BigInt(10000) + feeBps)) / BigInt(10000);
+
+        const totalHuman = Number(ethers.formatUnits(total, decimals));
+        const usdtOk = bal >= totalHuman;
+
+        setOk(
+          ckUSDT,
+          usdtOk,
+          `${bal.toFixed(2)} USDT`,
+          `${bal.toFixed(2)} USDT (necessário: ~${totalHuman.toFixed(2)} USDT)`
+        );
+
+        // libera fluxo se tiver BNB e USDT
+        disableFlow(!(bnbOk && usdtOk));
+
+      }catch(e){
+        console.error(e);
+        setOk(ckBNB, false, "", "não foi possível ler saldo");
+        setOk(ckUSDT, false, "", "não foi possível ler saldo");
+        disableFlow(true);
       }
     }
 
@@ -107,6 +282,10 @@
         return;
       }
       try{
+        // garante rede correta antes de conectar (melhor UX)
+        const okNet = await ensureBscNetwork();
+        if (!okNet) return;
+
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
         connectedWallet = accounts?.[0] || null;
 
@@ -117,9 +296,11 @@
 
         walletBox.innerHTML = `Carteira conectada: <b>${connectedWallet}</b>`;
 
-        // salva no backend (não exibe backend pro usuário)
+        // salva no backend
         await saveWallet(connectedWallet);
         toast("Carteira vinculada.");
+
+        await refreshChecklist();
       }catch(e){
         toast("Falha ao conectar carteira.", "error");
       }
@@ -129,6 +310,12 @@
       if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
       if (!params) return toast("Carregando parâmetros…", "error");
       if (!connectedWallet) return toast("Conecte a carteira primeiro.", "error");
+
+      // antes de aprovar: checa tudo
+      await refreshChecklist();
+      if (btnApprove.disabled) {
+        return toast("Verifique rede e saldos antes de aprovar.", "error");
+      }
 
       try{
         const { ethers } = await import("https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm");
@@ -148,6 +335,7 @@
         await tx.wait();
 
         toast("Approve concluído!");
+        await refreshChecklist();
       } catch (e) {
         console.error(e);
         toast("Falha no approve.", "error");
@@ -156,6 +344,12 @@
 
     async function subscribe(){
       if (!connectedWallet) return toast("Conecte a carteira primeiro.", "error");
+
+      // checa tudo antes de assinar
+      await refreshChecklist();
+      if (btnSubscribe.disabled) {
+        return toast("Verifique rede e saldos antes de assinar.", "error");
+      }
 
       try{
         await api("/api/assinatura/subscribe", {
@@ -173,6 +367,8 @@
         const msg = e?.message || "Falha ao assinar";
         if (msg === "APPROVE_REQUIRED") {
           toast("Você precisa fazer o approve primeiro.", "error");
+        } else if (msg === "WEB3_UNAVAILABLE") {
+          toast("Rede indisponível no momento. Tente novamente.", "error");
         } else {
           toast(msg, "error");
         }
@@ -183,8 +379,29 @@
     document.getElementById("btnApprove").addEventListener("click", approveUSDT);
     document.getElementById("btnSubscribe").addEventListener("click", subscribe);
 
+    document.getElementById("btnFixNetwork").addEventListener("click", async () => {
+      await ensureBscNetwork();
+      await refreshChecklist();
+    });
+
+    document.getElementById("btnRefreshBalances").addEventListener("click", refreshChecklist);
+
+    // atualiza checklist quando trocar conta/rede
+    if (window.ethereum) {
+      window.ethereum.on?.("accountsChanged", async (accs) => {
+        connectedWallet = accs?.[0] || null;
+        walletBox.innerHTML = connectedWallet ? `Carteira conectada: <b>${connectedWallet}</b>` : "";
+        await refreshChecklist();
+      });
+      window.ethereum.on?.("chainChanged", async () => {
+        await refreshChecklist();
+      });
+    }
+
+    disableFlow(true);
     await loadParams();
     await loadStatus();
+    await refreshChecklist();
   </script>
 </body>
 </html>
