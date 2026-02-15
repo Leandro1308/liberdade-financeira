@@ -25,15 +25,28 @@
         <p class="muted" style="margin:0 0 14px;">
           Acesso completo ao conteúdo + dashboard + área de afiliado.
         </p>
-        <div class="badge">R$ — (pagamento entra depois)</div>
+
+        <div id="planInfo" class="badge">Carregando…</div>
 
         <div style="height:14px"></div>
 
-        <button id="mockActivate" class="btn primary">Ativar acesso (modo teste)</button>
+        <button id="btnConnect" class="btn">Conectar carteira</button>
+
+        <div style="height:10px"></div>
+
+        <button id="btnApprove" class="btn">1) Aprovar USDT (1x)</button>
         <p class="muted small" style="margin-top:10px;">
-          Isso é apenas para validação do fluxo (sem cobrança). Quando integrar pagamento,
-          este botão será removido e a ativação virá do webhook do gateway.
+          Você paga gás apenas nesta aprovação. Depois, as renovações serão automáticas e gasless.
         </p>
+
+        <div style="height:10px"></div>
+
+        <button id="btnSubscribe" class="btn primary">2) Confirmar assinatura</button>
+        <p class="muted small" style="margin-top:10px;">
+          Nesta etapa o sistema ativa sua assinatura e libera o dashboard.
+        </p>
+
+        <div id="walletBox" class="muted small" style="margin-top:10px;"></div>
       </div>
 
       <div class="card section">
@@ -49,17 +62,23 @@
   </div>
 
   <script type="module">
-    import { me, activateMock, requireLogged } from "/assets/auth.js";
+    import { me, requireLogged, saveWallet } from "/assets/auth.js";
+    import { api } from "/assets/api.js";
     import { toast } from "/assets/ui.js";
 
     const token = requireLogged();
-    const status = document.getElementById("status");
+    const statusEl = document.getElementById("status");
+    const planInfo = document.getElementById("planInfo");
+    const walletBox = document.getElementById("walletBox");
 
-    async function load(){
+    let params = null;
+    let connectedWallet = null;
+
+    async function loadStatus(){
       try{
         const data = await me();
         const sub = data?.user?.subscription;
-        status.innerHTML = `
+        statusEl.innerHTML = `
           <div class="badge">Status: <b>${sub?.status || "inactive"}</b></div>
           <div class="muted small" style="margin-top:8px;">
             Renovação automática: <b>${sub?.renovacaoAutomatica ? "SIM" : "NÃO"}</b><br/>
@@ -67,21 +86,105 @@
           </div>
         `;
       }catch(e){
-        status.textContent = "Falha ao carregar status.";
+        statusEl.textContent = "Falha ao carregar status.";
       }
     }
 
-    document.getElementById("mockActivate").addEventListener("click", async () => {
+    async function loadParams(){
       try{
-        await activateMock();
-        toast("Acesso ativado (modo teste).");
-        await load();
-      }catch(err){
-        toast(err.message || "Falha ao ativar", "error");
-      }
-    });
+        params = await api("/api/assinatura/params");
+        const feePct = ((params.txFeeBps || 0) / 100).toFixed(2);
 
-    load();
+        planInfo.textContent = `Taxa gasVault: ${feePct}% | Contrato: ${params.contractAddress.slice(0,6)}…${params.contractAddress.slice(-4)}`;
+      }catch(e){
+        planInfo.textContent = "Parâmetros indisponíveis.";
+      }
+    }
+
+    async function connectWallet(){
+      if (!window.ethereum) {
+        toast("MetaMask não encontrado.", "error");
+        return;
+      }
+      try{
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        connectedWallet = accounts?.[0] || null;
+
+        if (!connectedWallet) {
+          toast("Nenhuma carteira selecionada.", "error");
+          return;
+        }
+
+        walletBox.innerHTML = `Carteira conectada: <b>${connectedWallet}</b>`;
+
+        // salva no backend (não exibe backend pro usuário)
+        await saveWallet(connectedWallet);
+        toast("Carteira vinculada.");
+      }catch(e){
+        toast("Falha ao conectar carteira.", "error");
+      }
+    }
+
+    async function approveUSDT(){
+      if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
+      if (!params) return toast("Carregando parâmetros…", "error");
+      if (!connectedWallet) return toast("Conecte a carteira primeiro.", "error");
+
+      try{
+        const { ethers } = await import("https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm");
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+
+        const usdtAbi = ["function approve(address spender, uint256 value) returns (bool)"];
+        const usdt = new ethers.Contract(params.token, usdtAbi, signer);
+
+        const price = BigInt(params.price);
+        const feeBps = BigInt(params.txFeeBps || 0);
+        const total = (price * (BigInt(10000) + feeBps)) / BigInt(10000);
+
+        toast("Aprovação enviada. Confirme no MetaMask…");
+        const tx = await usdt.approve(params.contractAddress, total);
+        await tx.wait();
+
+        toast("Approve concluído!");
+      } catch (e) {
+        console.error(e);
+        toast("Falha no approve.", "error");
+      }
+    }
+
+    async function subscribe(){
+      if (!connectedWallet) return toast("Conecte a carteira primeiro.", "error");
+
+      try{
+        await api("/api/assinatura/subscribe", {
+          method:"POST",
+          token,
+          body:{
+            walletAddress: connectedWallet,
+            referrerCode: null
+          }
+        });
+
+        toast("Assinatura ativada!");
+        await loadStatus();
+      }catch(e){
+        const msg = e?.message || "Falha ao assinar";
+        if (msg === "APPROVE_REQUIRED") {
+          toast("Você precisa fazer o approve primeiro.", "error");
+        } else {
+          toast(msg, "error");
+        }
+      }
+    }
+
+    document.getElementById("btnConnect").addEventListener("click", connectWallet);
+    document.getElementById("btnApprove").addEventListener("click", approveUSDT);
+    document.getElementById("btnSubscribe").addEventListener("click", subscribe);
+
+    await loadParams();
+    await loadStatus();
   </script>
 </body>
 </html>
