@@ -12,7 +12,13 @@ export const env = {
   BSC_RPC_URL: process.env.BSC_RPC_URL || "",
   OPERATOR_PRIVATE_KEY: process.env.OPERATOR_PRIVATE_KEY || "",
   SUBSCRIPTION_CONTRACT: process.env.SUBSCRIPTION_CONTRACT || "",
-  USDT_ADDRESS: process.env.USDT_ADDRESS || ""
+  USDT_ADDRESS: process.env.USDT_ADDRESS || "",
+
+  // Opcional: controla timeout do RPC (ms)
+  // (se não existir no Render, não muda nada)
+  BSC_RPC_TIMEOUT_MS: process.env.BSC_RPC_TIMEOUT_MS
+    ? Number(process.env.BSC_RPC_TIMEOUT_MS)
+    : 3500,
 };
 
 // Avisos (não derruba o servidor)
