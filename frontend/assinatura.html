@@ -10,7 +10,7 @@
   <div class="container">
     <div class="card topbar">
       <div class="brand"><span class="dot"></span> Liberdade Financeira</div>
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <div style="display:flex; gap:10px;">
         <a class="badge" href="/index.html">Início</a>
         <a class="badge" href="/login.html">Entrar</a>
         <a class="badge" href="/dashboard.html">Dashboard</a>
@@ -19,84 +19,82 @@
 
     <div style="height:16px"></div>
 
-    <!-- ✅ PÁGINA CENTRALIZADA -->
     <div class="card section" style="max-width:900px; margin:0 auto;">
       <h1 style="margin:0 0 8px; font-size:34px; line-height:1.15;">Ativar assinatura</h1>
 
-      <p class="muted" style="margin:0 0 14px; font-size:18px; line-height:1.6; text-align:justify;">
-        Para liberar o acesso ao dashboard, você vai usar <b>uma única carteira</b>:
-        ela será usada para <b>pagar a assinatura</b> e também para <b>receber suas comissões</b>.
+      <p class="muted" style="margin:0 0 14px; font-size:18px; line-height:1.6;">
+        Para liberar o acesso ao dashboard, você utilizará <b>uma única carteira</b>.
+        Ela será usada para <b>pagar sua assinatura</b> e também para <b>receber suas comissões</b>.
       </p>
 
-      <div id="planInfo" class="badge" style="font-size:15px; padding:10px 12px;">Carregando parâmetros…</div>
-
-      <div style="height:14px"></div>
-
-      <!-- ✅ PASSO A PASSO (SIMPLIFICADO) -->
-      <div class="card" style="padding:16px; border-radius:16px;">
-        <div class="badge" style="margin-bottom:10px;">O que você precisa fazer</div>
-
-        <div style="font-size:17px; line-height:1.75; text-align:justify;">
-          <div class="card" style="padding:14px; border-radius:14px;">
-            <div class="badge" style="font-size:13px;">Passo 1</div>
-            <p class="muted" style="margin:10px 0 0;">
-              <b>Baixe o MetaMask</b> e <b>crie sua carteira</b>.
-              Depois, selecione a rede <b>BNB Smart Chain (BEP-20)</b>.
-            </p>
-          </div>
-
-          <div style="height:10px"></div>
-
-          <div class="card" style="padding:14px; border-radius:14px;">
-            <div class="badge" style="font-size:13px;">Passo 2</div>
-            <p class="muted" style="margin:10px 0 0;">
-              Coloque na sua carteira:
-              <br/>• <b>USDT (BEP-20)</b> para pagar a assinatura
-              <br/>• Um pouco de <b>BNB</b> para a taxa de rede (autorização)
-            </p>
-            <p class="muted small" style="margin:10px 0 0; font-size:14.5px;">
-              ⚠️ USDT precisa estar na rede <b>BNB Smart Chain (BEP-20)</b>.
-            </p>
-          </div>
-
-          <div style="height:10px"></div>
-
-          <div class="card" style="padding:14px; border-radius:14px;">
-            <div class="badge" style="font-size:13px;">Passo 3</div>
-            <p class="muted" style="margin:10px 0 0;">
-              Informe sua carteira aqui, clique em <b>Autorizar</b> e depois em <b>Concluir assinatura</b>.
-            </p>
-          </div>
-        </div>
-
-        <div style="height:12px"></div>
-
-        <!-- USDT CONTRACT (caso precise importar token) -->
-        <div class="badge" style="margin-bottom:8px;">Se precisar importar o token USDT</div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-          <input id="usdtContract" class="input" readonly
-            value="Carregando contrato do USDT…"
-            style="flex:1; min-width:260px; font-size:16px; padding:14px; border-radius:14px;"/>
-          <button id="copyUsdt" class="btn">Copiar</button>
-        </div>
-
-        <p class="muted small" style="margin-top:10px; font-size:14.5px; text-align:justify;">
-          Dica: no MetaMask, vá em <b>Importar token</b> e cole o contrato acima (se necessário).
-        </p>
+      <div id="planInfo" class="badge" style="font-size:15px; padding:10px 12px;">
+        Carregando parâmetros…
       </div>
 
-      <div style="height:14px"></div>
+      <div style="height:12px"></div>
 
-      <!-- ✅ CARTEIRA -->
+      <!-- ✅ STATUS DE REDE -->
       <div class="card" style="padding:16px; border-radius:16px;">
-        <div class="badge">Sua carteira (BEP-20)</div>
-
-        <p class="muted" style="margin:10px 0 0; font-size:16.5px; text-align:justify;">
-          Você pode <b>conectar o MetaMask</b> para preencher automaticamente,
-          ou <b>colar manualmente</b> seu endereço (0x...).
-        </p>
+        <div class="badge">Rede</div>
+        <div id="networkBox" class="muted" style="margin-top:10px; font-size:15.5px;">
+          Verificando rede…
+        </div>
 
         <div style="height:10px"></div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button id="btnSwitchBsc" class="btn ghost">Mudar para BNB Smart Chain</button>
+        </div>
+
+        <div id="networkHint" class="muted small" style="margin-top:10px;">
+          Se o botão não funcionar, abra o MetaMask e selecione <b>BNB Smart Chain</b>.
+        </div>
+      </div>
+
+      <div style="height:16px"></div>
+
+      <!-- ORIENTAÇÃO SIMPLIFICADA -->
+      <div class="card" style="padding:18px; border-radius:16px;">
+        <div class="badge" style="margin-bottom:10px;">O que você precisa ter na carteira</div>
+
+        <div style="font-size:17px; line-height:1.7;">
+          <ul style="margin:0; padding-left:20px;">
+            <li><b>Binance Coin (BNB)</b></li>
+            <li><b>Tether USD (USDT)</b></li>
+          </ul>
+
+          <div style="height:12px"></div>
+
+          <p class="muted" style="margin:0;">
+            Recomendado para começar:
+          </p>
+
+          <ul style="margin:8px 0 0; padding-left:20px;">
+            <li>Pelo menos <b>15 USDT</b></li>
+            <li>Pelo menos o equivalente a <b>1 USDT em BNB</b> para taxas de rede</li>
+          </ul>
+
+          <div style="height:12px"></div>
+
+          <p class="muted small" style="margin:0;">
+            Será cobrada uma pequena taxa de rede em BNB apenas na primeira autorização
+            (normalmente inferior a US$1).
+          </p>
+        </div>
+      </div>
+
+      <div style="height:16px"></div>
+
+      <!-- CARTEIRA -->
+      <div class="card" style="padding:18px; border-radius:16px;">
+        <div class="badge">Sua carteira principal</div>
+
+        <p class="muted" style="margin:10px 0 0; font-size:16px;">
+          Cole abaixo o endereço da sua carteira (começa com 0x).
+          Ou conecte o MetaMask para preencher automaticamente.
+        </p>
+
+        <div style="height:12px"></div>
 
         <input id="walletInput" class="input" placeholder="Cole aqui o endereço (0x...)"
                style="font-size:16px; padding:14px; border-radius:14px;"/>
@@ -109,42 +107,36 @@
           <button id="btnCheckBalances" class="btn ghost">Verificar saldos</button>
         </div>
 
-        <div id="walletBox" class="muted" style="margin-top:10px; font-size:15.5px;"></div>
-        <div id="balancesBox" class="muted" style="margin-top:8px; font-size:15.5px;"></div>
+        <div id="walletBox" class="muted" style="margin-top:10px; font-size:15px;"></div>
+        <div id="balancesBox" class="muted" style="margin-top:8px; font-size:15px;"></div>
       </div>
 
-      <div style="height:14px"></div>
+      <div style="height:16px"></div>
 
-      <!-- ✅ AÇÕES (ULTRA SIMPLES) -->
-      <div class="card" style="padding:16px; border-radius:16px;">
-        <div class="badge">Finalizar assinatura</div>
-
-        <div style="height:10px"></div>
-
-        <button id="btnApprove" class="btn" style="width:100%; font-size:16px; padding:14px;" disabled>
-          1) Autorizar pagamento (uma única vez)
-        </button>
-        <p class="muted" style="margin-top:10px; font-size:15.5px; line-height:1.55; text-align:justify;">
-          Esta etapa dá permissão para debitar o USDT da assinatura.
-          O MetaMask pode cobrar uma pequena <b>taxa de rede em BNB</b> para confirmar.
-        </p>
-
-        <div style="height:10px"></div>
-
-        <button id="btnSubscribe" class="btn primary" style="width:100%; font-size:16.5px; padding:14px;" disabled>
-          2) Concluir assinatura
-        </button>
-        <p class="muted" style="margin-top:10px; font-size:15.5px; line-height:1.55; text-align:justify;">
-          Nesta etapa sua assinatura é ativada e o acesso ao dashboard é liberado.
-        </p>
+      <!-- AÇÃO ÚNICA -->
+      <div class="card" style="padding:18px; border-radius:16px;">
+        <div class="badge">Ativar acesso</div>
 
         <div style="height:12px"></div>
+
+        <button id="btnActivate" class="btn primary" style="width:100%; font-size:16.5px; padding:14px;">
+          Ativar assinatura (automático)
+        </button>
+
+        <p class="muted small" style="margin-top:10px; line-height:1.55;">
+          Este botão faz tudo: autoriza o pagamento se necessário e conclui a assinatura.
+        </p>
+
+        <div style="height:14px"></div>
 
         <div class="badge">Status da sua conta</div>
         <div id="status" class="muted" style="margin-top:8px;">Carregando…</div>
 
-        <div style="height:12px"></div>
-        <a class="btn" style="width:100%;" href="/dashboard.html">Ir para dashboard</a>
+        <div style="height:14px"></div>
+
+        <a class="btn" style="width:100%;" href="/dashboard.html">
+          Ir para dashboard
+        </a>
       </div>
 
       <div id="toast" class="toast"><div class="msg"></div></div>
@@ -156,33 +148,39 @@
     import { api } from "/assets/api.js";
     import { toast } from "/assets/ui.js";
 
-    const token = requireLogged();
+    requireLogged();
 
     const statusEl = document.getElementById("status");
     const planInfo = document.getElementById("planInfo");
     const walletBox = document.getElementById("walletBox");
     const balancesBox = document.getElementById("balancesBox");
     const walletInput = document.getElementById("walletInput");
-    const usdtContract = document.getElementById("usdtContract");
 
-    const btnApprove = document.getElementById("btnApprove");
-    const btnSubscribe = document.getElementById("btnSubscribe");
+    const networkBox = document.getElementById("networkBox");
+    const networkHint = document.getElementById("networkHint");
+    const btnSwitchBsc = document.getElementById("btnSwitchBsc");
 
+    const btnConnect = document.getElementById("btnConnect");
+    const btnSaveWallet = document.getElementById("btnSaveWallet");
+    const btnCheckBalances = document.getElementById("btnCheckBalances");
+    const btnActivate = document.getElementById("btnActivate");
+
+    // ✅ BNB Smart Chain Mainnet
+    const BSC_CHAIN_ID_HEX = "0x38"; // 56
     let params = null;
+    let isBscOk = false;
 
     function is0xAddress(v){
       return /^0x[a-fA-F0-9]{40}$/.test(String(v||"").trim());
     }
-    function shortAddr(a){
-      if (!a) return "";
-      return `${a.slice(0,6)}…${a.slice(-4)}`;
+
+    function setButtonsEnabled(enabled){
+      btnCheckBalances.disabled = !enabled;
+      btnActivate.disabled = !enabled;
     }
 
-    function refreshButtons(){
-      const w = walletInput.value.trim();
-      const okWallet = is0xAddress(w);
-      btnApprove.disabled = !okWallet || !params;
-      btnSubscribe.disabled = !okWallet || !params;
+    function setWalletButtonsEnabled(enabled){
+      btnSaveWallet.disabled = !enabled;
     }
 
     async function loadStatus(){
@@ -192,8 +190,7 @@
 
         statusEl.innerHTML = `
           <div class="badge">Status: <b>${sub?.status || "inactive"}</b></div>
-          <div class="muted small" style="margin-top:8px; font-size:14.5px;">
-            Renovação automática: <b>${sub?.renovacaoAutomatica ? "SIM" : "NÃO"}</b><br/>
+          <div class="muted small" style="margin-top:8px;">
             Vencimento: <b>${sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleString("pt-BR") : "-"}</b>
           </div>
         `;
@@ -206,27 +203,115 @@
       try{
         params = await api("/api/assinatura/params");
         const feePct = ((params.txFeeBps || 0) / 100).toFixed(2);
-        planInfo.textContent = `Taxa do sistema: ${feePct}% | Contrato: ${shortAddr(params.contractAddress)}`;
-
-        usdtContract.value = params.token || "—";
-        refreshButtons();
-      }catch(e){
+        planInfo.textContent = `Taxa administrativa: ${feePct}%`;
+      }catch{
         params = null;
-        planInfo.textContent = "Parâmetros indisponíveis (tente novamente).";
-        usdtContract.value = "Indisponível";
-        refreshButtons();
+        planInfo.textContent = "Parâmetros indisponíveis.";
       }
+    }
+
+    async function getChainId(){
+      if (!window.ethereum) return null;
+      try{
+        return await window.ethereum.request({ method: "eth_chainId" });
+      }catch{
+        return null;
+      }
+    }
+
+    function renderNetwork(chainId){
+      if (!window.ethereum){
+        isBscOk = false;
+        networkBox.innerHTML = `MetaMask não encontrado. Instale o MetaMask para continuar.`;
+        networkHint.innerHTML = `Instale o MetaMask e depois selecione <b>BNB Smart Chain</b>.`;
+        setButtonsEnabled(false);
+        return;
+      }
+
+      if (!chainId){
+        isBscOk = false;
+        networkBox.innerHTML = `Não foi possível identificar a rede agora.`;
+        setButtonsEnabled(false);
+        return;
+      }
+
+      if (chainId.toLowerCase() === BSC_CHAIN_ID_HEX){
+        isBscOk = true;
+        networkBox.innerHTML = `Rede detectada: <b>BNB Smart Chain</b> ✅`;
+        networkHint.innerHTML = `Você está na rede correta.`;
+        setButtonsEnabled(true);
+      } else {
+        isBscOk = false;
+        networkBox.innerHTML = `Rede detectada: <b>${chainId}</b> ❌<br/>Selecione <b>BNB Smart Chain</b> para continuar.`;
+        networkHint.innerHTML = `Clique em <b>Mudar para BNB Smart Chain</b> ou troque no MetaMask.`;
+        setButtonsEnabled(false);
+      }
+    }
+
+    async function ensureBsc(){
+      if (!window.ethereum) return false;
+
+      try{
+        const current = await getChainId();
+        if (String(current).toLowerCase() === BSC_CHAIN_ID_HEX) return true;
+
+        // tenta trocar
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: BSC_CHAIN_ID_HEX }]
+        });
+        return true;
+      }catch(e){
+        // se a chain não existir no MetaMask, tenta adicionar
+        const code = e?.code;
+        if (code === 4902){
+          try{
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: BSC_CHAIN_ID_HEX,
+                chainName: "BNB Smart Chain",
+                nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+                rpcUrls: [
+                  "https://bsc-dataseed.binance.org/",
+                  "https://bsc-dataseed1.binance.org/",
+                  "https://bsc-dataseed2.binance.org/"
+                ],
+                blockExplorerUrls: ["https://bscscan.com"]
+              }]
+            });
+            return true;
+          }catch{
+            return false;
+          }
+        }
+        return false;
+      }
+    }
+
+    async function refreshNetwork(){
+      const chainId = await getChainId();
+      renderNetwork(chainId);
     }
 
     async function connectWallet(){
       if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
       try{
+        const ok = await ensureBsc();
+        await refreshNetwork();
+        if (!ok) return toast("Selecione a rede BNB Smart Chain no MetaMask.", "error");
+
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        const acc = accounts?.[0] || null;
+        const acc = accounts?.[0] || "";
         if (!acc) return toast("Nenhuma carteira selecionada.", "error");
         walletInput.value = acc;
-        toast("Carteira preenchida.");
-        refreshButtons();
+
+        // opcional: já salva automaticamente
+        if (is0xAddress(acc)){
+          await saveWallet(acc);
+          walletBox.innerHTML = `Carteira salva: <b>${acc}</b>`;
+        }
+        toast("Carteira conectada.");
       }catch{
         toast("Falha ao conectar MetaMask.", "error");
       }
@@ -234,19 +319,27 @@
 
     async function saveWalletManual(){
       const w = walletInput.value.trim();
-      if (!is0xAddress(w)) return toast("Cole um endereço válido (0x...).", "error");
-      await saveWallet(w);
-      walletBox.innerHTML = `Carteira salva: <b>${w}</b>`;
-      toast("Carteira vinculada.");
-      refreshButtons();
+      if (!is0xAddress(w)) return toast("Endereço inválido.", "error");
+      try{
+        await saveWallet(w);
+        walletBox.innerHTML = `Carteira salva: <b>${w}</b>`;
+        toast("Carteira vinculada.");
+      }catch{
+        toast("Não foi possível salvar a carteira.", "error");
+      }
     }
 
     async function checkBalances(){
       if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
       if (!params?.token) return toast("Parâmetros indisponíveis.", "error");
 
+      if (!isBscOk){
+        toast("Selecione BNB Smart Chain no MetaMask.", "error");
+        return;
+      }
+
       const w = walletInput.value.trim();
-      if (!is0xAddress(w)) return toast("Cole um endereço válido (0x...).", "error");
+      if (!is0xAddress(w)) return toast("Informe sua carteira (0x...).", "error");
 
       try{
         const { ethers } = await import("https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm");
@@ -257,98 +350,137 @@
         const erc20Abi = ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"];
         const usdt = new ethers.Contract(params.token, erc20Abi, provider);
         const [raw, dec] = await Promise.all([usdt.balanceOf(w), usdt.decimals()]);
-        const usdtFmt = ethers.formatUnits(raw, dec);
 
         balancesBox.innerHTML = `
           <div class="badge">Saldos</div>
           <div class="muted" style="margin-top:8px;">
             • BNB: <b>${ethers.formatEther(bnb)}</b><br/>
-            • USDT: <b>${usdtFmt}</b>
+            • USDT: <b>${ethers.formatUnits(raw, dec)}</b>
           </div>
         `;
       }catch(e){
         console.error(e);
-        toast("Não foi possível verificar saldos agora.", "error");
+        toast("Não foi possível verificar saldos.", "error");
       }
     }
 
-    async function approveUSDT(){
-      if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
-      if (!params) return toast("Parâmetros indisponíveis.", "error");
+    async function approveIfNeeded(){
+      if (!window.ethereum) throw new Error("METAMASK_NOT_FOUND");
+      if (!params) throw new Error("PARAMS_UNAVAILABLE");
 
       const w = walletInput.value.trim();
-      if (!is0xAddress(w)) return toast("Cole e salve a carteira primeiro.", "error");
+      if (!is0xAddress(w)) throw new Error("WALLET_REQUIRED");
+      if (!isBscOk) throw new Error("WRONG_NETWORK");
 
+      const { ethers } = await import("https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm");
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const signerAddr = (await signer.getAddress()) || "";
+
+      if (signerAddr.toLowerCase() !== w.toLowerCase()){
+        throw new Error("WALLET_MISMATCH");
+      }
+
+      const usdtAbi = ["function approve(address spender, uint256 value) returns (bool)"];
+      const usdt = new ethers.Contract(params.token, usdtAbi, signer);
+
+      const price = BigInt(params.price);
+      const feeBps = BigInt(params.txFeeBps || 0);
+      const total = (price * (BigInt(10000) + feeBps)) / BigInt(10000);
+
+      toast("Autorize no MetaMask…");
+      const tx = await usdt.approve(params.contractAddress, total);
+      await tx.wait();
+      toast("Autorização concluída!");
+    }
+
+    async function activateOneClick(){
       try{
-        const { ethers } = await import("https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm");
+        // rede certa
+        const ok = await ensureBsc();
+        await refreshNetwork();
+        if (!ok) return toast("Selecione a rede BNB Smart Chain no MetaMask.", "error");
 
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
+        // carteira válida
+        const w = walletInput.value.trim();
+        if (!is0xAddress(w)) return toast("Informe sua carteira (0x...).", "error");
 
-        const signerAddr = await signer.getAddress();
-        if (signerAddr.toLowerCase() !== w.toLowerCase()) {
-          return toast("No MetaMask, selecione a mesma carteira informada.", "error");
+        // garante que a carteira está salva no sistema (para comissão)
+        try{
+          await saveWallet(w);
+          walletBox.innerHTML = `Carteira salva: <b>${w}</b>`;
+        }catch{}
+
+        // tenta assinar direto (se já tiver allowance, vai)
+        try{
+          await api("/api/assinatura/subscribe", {
+            method:"POST",
+            token: getToken(),
+            body: { walletAddress: w, referrerCode: null }
+          });
+          toast("Assinatura ativada!");
+          await loadStatus();
+          return;
+        }catch(e){
+          // se precisar approve, faz approve e tenta de novo
+          if ((e?.message || "") === "APPROVE_REQUIRED"){
+            await approveIfNeeded();
+            await api("/api/assinatura/subscribe", {
+              method:"POST",
+              token: getToken(),
+              body: { walletAddress: w, referrerCode: null }
+            });
+            toast("Assinatura ativada!");
+            await loadStatus();
+            return;
+          }
+          throw e;
         }
-
-        const usdtAbi = ["function approve(address spender, uint256 value) returns (bool)"];
-        const usdt = new ethers.Contract(params.token, usdtAbi, signer);
-
-        const price = BigInt(params.price);
-        const feeBps = BigInt(params.txFeeBps || 0);
-        const total = (price * (BigInt(10000) + feeBps)) / BigInt(10000);
-
-        toast("Autorize no MetaMask…");
-        const tx = await usdt.approve(params.contractAddress, total);
-        await tx.wait();
-        toast("Autorização concluída!");
       }catch(e){
-        console.error(e);
-        toast("Falha na autorização.", "error");
+        const msg = e?.message || "Falha ao ativar assinatura";
+        if (msg === "WALLET_MISMATCH") return toast("No MetaMask, selecione a mesma carteira informada.", "error");
+        if (msg === "WRONG_NETWORK") return toast("Selecione BNB Smart Chain no MetaMask.", "error");
+        toast(msg, "error");
       }
     }
 
-    async function subscribe(){
-      const w = walletInput.value.trim();
-      if (!is0xAddress(w)) return toast("Cole e salve a carteira primeiro.", "error");
-
-      try{
-        await api("/api/assinatura/subscribe", {
-          method:"POST",
-          token: getToken(),
-          body: { walletAddress: w, referrerCode: null }
-        });
-
-        toast("Assinatura ativada!");
-        await loadStatus();
-      }catch(e){
-        const msg = e?.message || "Falha ao assinar";
-        if (msg === "APPROVE_REQUIRED") toast("Primeiro clique em Autorizar pagamento.", "error");
-        else toast(msg, "error");
-      }
-    }
-
-    document.getElementById("btnConnect").addEventListener("click", connectWallet);
-    document.getElementById("btnSaveWallet").addEventListener("click", saveWalletManual);
-    document.getElementById("btnCheckBalances").addEventListener("click", checkBalances);
-    document.getElementById("btnApprove").addEventListener("click", approveUSDT);
-    document.getElementById("btnSubscribe").addEventListener("click", subscribe);
-
-    document.getElementById("copyUsdt").addEventListener("click", async () => {
-      try{
-        await navigator.clipboard.writeText(usdtContract.value);
-        toast("Copiado!");
-      }catch{
-        usdtContract.select();
-        document.execCommand("copy");
-        toast("Copiado!");
-      }
+    // listeners
+    btnSwitchBsc.addEventListener("click", async () => {
+      const ok = await ensureBsc();
+      await refreshNetwork();
+      if (!ok) toast("Não foi possível trocar a rede automaticamente. Troque no MetaMask.", "error");
+      else toast("Rede ajustada.");
     });
 
-    walletInput.addEventListener("input", refreshButtons);
+    btnConnect.addEventListener("click", connectWallet);
+    btnSaveWallet.addEventListener("click", saveWalletManual);
+    btnCheckBalances.addEventListener("click", checkBalances);
+    btnActivate.addEventListener("click", activateOneClick);
+
+    // habilita/desabilita salvar conforme input
+    walletInput.addEventListener("input", () => {
+      setWalletButtonsEnabled(is0xAddress(walletInput.value.trim()));
+    });
+
+    // eventos do MetaMask
+    if (window.ethereum){
+      window.ethereum.on?.("chainChanged", async () => {
+        await refreshNetwork();
+      });
+      window.ethereum.on?.("accountsChanged", async (accs) => {
+        const a = accs?.[0] || "";
+        if (a) walletInput.value = a;
+        setWalletButtonsEnabled(is0xAddress(walletInput.value.trim()));
+      });
+    }
+
+    // init
+    setWalletButtonsEnabled(false);
+    setButtonsEnabled(false);
 
     await loadParams();
     await loadStatus();
-    refreshButtons();
+    await refreshNetwork();
   </script>
 </body>
 </html>
