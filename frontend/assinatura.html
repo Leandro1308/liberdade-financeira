@@ -19,7 +19,6 @@
 
     <div style="height:16px"></div>
 
-    <!-- ✅ UMA PÁGINA CENTRALIZADA -->
     <div class="card section" style="max-width:900px; margin:0 auto;">
       <h1 style="margin:0 0 8px; font-size:34px; line-height:1.15;">Ativar assinatura</h1>
       <p class="muted" style="margin:0 0 14px; font-size:18px; line-height:1.6;">
@@ -27,54 +26,53 @@
         ela será usada para <b>pagar a assinatura</b> e também para <b>receber suas comissões</b>.
       </p>
 
-      <!-- ✅ NO CELULAR: botão simples para abrir no MetaMask (evita falha de conexão) -->
-      <div id="openInMM" class="card" style="padding:14px; border-radius:16px; margin:12px 0; display:none;">
-        <div class="badge">No celular</div>
-        <div class="muted" style="margin-top:10px; font-size:15.5px; line-height:1.55;">
-          Para assinar pelo celular, abra esta página dentro do navegador do MetaMask.
-        </div>
-        <div style="height:10px"></div>
-        <a id="mmLink" class="btn primary" style="width:100%; text-align:center;" href="#">
+      <!-- ✅ MOBILE: abrir dentro do MetaMask -->
+      <div id="mobileBox" class="card" style="padding:16px; border-radius:16px; display:none;">
+        <div class="badge" style="margin-bottom:10px;">No celular</div>
+        <p class="muted" style="margin:0 0 10px; font-size:16.5px; line-height:1.6;">
+          Para assinar pelo celular, abra esta página dentro do navegador do <b>MetaMask</b>.
+        </p>
+        <button id="btnOpenMM" class="btn primary" style="width:100%; font-size:16.5px; padding:14px;">
           Abrir no MetaMask
-        </a>
+        </button>
+        <p class="muted small" style="margin-top:10px; font-size:14.5px;">
+          Se aparecer um aviso do MetaMask (“prossiga com cautela”), toque em <b>Continuar</b>.
+        </p>
       </div>
-
-      <div id="planInfo" class="badge" style="font-size:15px; padding:10px 12px;">Carregando parâmetros…</div>
 
       <div style="height:14px"></div>
 
-      <!-- ✅ ORIENTAÇÕES SIMPLIFICADAS (sem excesso de info) -->
+      <div id="planInfo" class="badge" style="font-size:15px; padding:10px 12px;">Carregando parâmetros…</div>
+      <div id="netInfo" class="muted" style="margin-top:10px; font-size:15.5px;"></div>
+
+      <div style="height:14px"></div>
+
+      <!-- ✅ ORIENTAÇÕES SIMPLIFICADAS (do jeito que você pediu) -->
       <div class="card" style="padding:16px; border-radius:16px;">
-        <div class="badge" style="margin-bottom:10px;">Antes de continuar</div>
+        <div class="badge" style="margin-bottom:10px;">O que você precisa ter na sua carteira</div>
 
         <div style="font-size:18px; line-height:1.7;">
           <ol style="margin:0; padding-left:20px;">
             <li>
-              <b>Instale o MetaMask</b> (app no celular ou extensão no PC) e <b>crie sua carteira</b>.
+              Instale o <b>MetaMask</b> e crie sua carteira.
             </li>
-
             <li style="margin-top:10px;">
-              Faça um depósito inicial de forma simples:
+              Faça um depósito inicial simples:
               <ul style="margin:8px 0 0; padding-left:18px;">
                 <li><b>15 USDT</b> (Tether USD)</li>
-                <li>e converta/tenha <b>3 USDT em Binance Coin (BNB)</b> para taxas</li>
+                <li>Depois, troque <b>3 USDT</b> por <b>BNB</b> (Binance Coin) dentro do MetaMask (Troca)</li>
               </ul>
               <div class="muted" style="margin-top:10px;">
-                Isso é para garantir que a carteira consiga pagar as pequenas taxas de rede quando necessário.
+                Será cobrada uma pequena taxa de rede em <b>BNB</b> na primeira autorização (normalmente inferior a <b>US$1</b>).
               </div>
-            </li>
-
-            <li style="margin-top:10px;">
-              Depois disso, basta:
-              <ul style="margin:8px 0 0; padding-left:18px;">
-                <li>Informar (ou conectar) o endereço da sua carteira</li>
-                <li>Clicar em <b>Ativar assinatura</b> e confirmar no MetaMask</li>
-              </ul>
             </li>
           </ol>
 
-          <p class="muted small" style="margin-top:10px; font-size:14.5px;">
-            Importante: essa mesma carteira será usada para <b>pagar</b> e para <b>receber comissões</b>.
+          <div style="height:10px"></div>
+
+          <p class="muted small" style="margin:0; font-size:14.5px;">
+            Obs.: o sistema funciona na rede <b>BNB Smart Chain</b>. Se você estiver na rede errada (Ethereum),
+            nós vamos pedir a troca automaticamente.
           </p>
         </div>
       </div>
@@ -107,7 +105,7 @@
 
       <div style="height:14px"></div>
 
-      <!-- ✅ AÇÃO ÚNICA (SIMPLIFICADA): um botão faz approve se precisar e assina -->
+      <!-- ✅ AÇÃO ÚNICA -->
       <div class="card" style="padding:16px; border-radius:16px;">
         <div class="badge">Ativar acesso</div>
 
@@ -116,9 +114,8 @@
         <button id="btnSubscribe" class="btn primary" style="width:100%; font-size:16.5px; padding:14px;">
           Ativar assinatura
         </button>
-
         <p class="muted" style="margin-top:10px; font-size:15.5px; line-height:1.55;">
-          Se for a sua primeira vez, o MetaMask pode pedir uma confirmação extra para autorizar o débito do USDT.
+          Se for sua primeira vez, o MetaMask pode pedir uma confirmação extra para autorizar o débito do USDT.
           Depois, a assinatura é ativada e o acesso ao dashboard é liberado.
         </p>
 
@@ -139,33 +136,104 @@
     import { api } from "/assets/api.js";
     import { toast } from "/assets/ui.js";
 
-    const token = requireLogged();
+    requireLogged();
 
     const statusEl = document.getElementById("status");
     const planInfo = document.getElementById("planInfo");
+    const netInfo = document.getElementById("netInfo");
     const walletBox = document.getElementById("walletBox");
     const balancesBox = document.getElementById("balancesBox");
     const walletInput = document.getElementById("walletInput");
 
-    // Se estiver no celular e não tiver provider, oferece "Abrir no MetaMask"
-    const openInMM = document.getElementById("openInMM");
-    const mmLink = document.getElementById("mmLink");
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const btnSubscribe = document.getElementById("btnSubscribe");
+    const btnConnect = document.getElementById("btnConnect");
+    const btnSaveWallet = document.getElementById("btnSaveWallet");
+    const btnCheckBalances = document.getElementById("btnCheckBalances");
 
-    if (isMobile && !window.ethereum) {
-      const clean = location.href.replace(/^https?:\/\//, "");
-      mmLink.href = `https://metamask.app.link/dapp/${clean}`;
-      openInMM.style.display = "block";
-    }
+    const mobileBox = document.getElementById("mobileBox");
+    const btnOpenMM = document.getElementById("btnOpenMM");
 
     let params = null;
 
+    // ---- helpers
     function is0xAddress(v){
       return /^0x[a-fA-F0-9]{40}$/.test(String(v||"").trim());
     }
     function shortAddr(a){
       if (!a) return "";
       return `${a.slice(0,6)}…${a.slice(-4)}`;
+    }
+    function isMobile(){
+      return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    }
+    function isInMetaMask(){
+      // MetaMask Mobile injecta window.ethereum e costuma ter isMetaMask = true,
+      // mas em alguns navegadores móveis pode existir outro provider.
+      return !!(window.ethereum && window.ethereum.isMetaMask);
+    }
+    function openInMetaMask(){
+      const url = `${location.protocol}//${location.host}${location.pathname}${location.search}${location.hash}`;
+      // deep link padrão da MetaMask
+      const deep = `https://metamask.app.link/dapp/${encodeURIComponent(location.host + location.pathname + location.search)}`;
+      // tenta abrir
+      location.href = deep;
+      // fallback: se não abrir, o usuário já está vendo a página com instrução
+    }
+
+    // ---- BNB Smart Chain (Mainnet)
+    const BSC_CHAIN_ID_HEX = "0x38"; // 56
+    const BSC_PARAMS = {
+      chainId: BSC_CHAIN_ID_HEX,
+      chainName: "BNB Smart Chain",
+      nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+      rpcUrls: ["https://rpc.ankr.com/bsc"], // sem key (ok pra agora)
+      blockExplorerUrls: ["https://bscscan.com"],
+    };
+
+    async function ensureBscChain(){
+      if (!window.ethereum) {
+        netInfo.textContent = "MetaMask não encontrado.";
+        return false;
+      }
+      try{
+        const chainId = await window.ethereum.request({ method:"eth_chainId" });
+        if (chainId === BSC_CHAIN_ID_HEX) {
+          netInfo.innerHTML = `Rede: <b>BNB Smart Chain</b>`;
+          return true;
+        }
+
+        netInfo.innerHTML = `Rede atual: <b>${chainId}</b> — trocando para <b>BNB Smart Chain</b>...`;
+
+        try{
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: BSC_CHAIN_ID_HEX }],
+          });
+          netInfo.innerHTML = `Rede: <b>BNB Smart Chain</b>`;
+          return true;
+        }catch(switchErr){
+          // se a rede não existir no metamask (4902), adiciona
+          if (switchErr?.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [BSC_PARAMS],
+            });
+            // tenta switch de novo
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: BSC_CHAIN_ID_HEX }],
+            });
+            netInfo.innerHTML = `Rede: <b>BNB Smart Chain</b>`;
+            return true;
+          }
+          netInfo.innerHTML = `Rede errada. Troque para <b>BNB Smart Chain</b> no MetaMask.`;
+          return false;
+        }
+      }catch(e){
+        console.error(e);
+        netInfo.textContent = "Não foi possível verificar a rede agora.";
+        return false;
+      }
     }
 
     async function loadStatus(){
@@ -191,23 +259,25 @@
         const feePct = ((params.txFeeBps || 0) / 100).toFixed(2);
         planInfo.textContent = `Taxa administrativa: ${feePct}% | Contrato: ${shortAddr(params.contractAddress)}`;
       }catch(e){
+        console.error(e);
         params = null;
         planInfo.textContent = "Parâmetros indisponíveis (tente novamente).";
       }
     }
 
     async function connectWallet(){
-      if (!window.ethereum) {
-        if (isMobile) return toast("No celular, abra esta página dentro do MetaMask.", "error");
-        return toast("MetaMask não encontrado.", "error");
-      }
+      if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
       try{
+        // tenta garantir BSC já no connect (evita ficar em Ethereum)
+        await ensureBscChain();
+
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
         const acc = accounts?.[0] || null;
         if (!acc) return toast("Nenhuma carteira selecionada.", "error");
         walletInput.value = acc;
         toast("Carteira preenchida.");
-      }catch{
+      }catch(e){
+        console.error(e);
         toast("Falha ao conectar MetaMask.", "error");
       }
     }
@@ -221,11 +291,12 @@
     }
 
     async function checkBalances(){
-      if (!window.ethereum) {
-        if (isMobile) return toast("No celular, abra esta página dentro do MetaMask.", "error");
-        return toast("MetaMask não encontrado.", "error");
-      }
+      if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
       if (!params?.token) return toast("Parâmetros indisponíveis.", "error");
+
+      // força rede correta antes de ler saldo
+      const okNet = await ensureBscChain();
+      if (!okNet) return toast("Troque para BNB Smart Chain no MetaMask.", "error");
 
       const w = walletInput.value.trim();
       if (!is0xAddress(w)) return toast("Cole um endereço válido (0x...).", "error");
@@ -254,47 +325,28 @@
       }
     }
 
-    async function approveIfNeeded(wallet){
-      // Faz approve apenas se o backend disser que precisa.
-      if (!window.ethereum) {
-        if (isMobile) throw new Error("NO_PROVIDER_MOBILE");
-        throw new Error("NO_PROVIDER");
-      }
-      if (!params) throw new Error("PARAMS_UNAVAILABLE");
-
-      const { ethers } = await import("https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm");
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-
-      const signerAddr = await signer.getAddress();
-      if (signerAddr.toLowerCase() !== wallet.toLowerCase()) {
-        throw new Error("WRONG_WALLET_SELECTED");
-      }
-
-      const usdtAbi = ["function approve(address spender, uint256 value) returns (bool)"];
-      const usdt = new ethers.Contract(params.token, usdtAbi, signer);
-
-      const price = BigInt(params.price);
-      const feeBps = BigInt(params.txFeeBps || 0);
-      const total = (price * (BigInt(10000) + feeBps)) / BigInt(10000);
-
-      toast("Confirme a autorização no MetaMask…");
-      const tx = await usdt.approve(params.contractAddress, total);
-      await tx.wait();
-      toast("Autorização concluída!");
-    }
-
     async function subscribe(){
+      if (!window.ethereum) {
+        toast("MetaMask não encontrado.", "error");
+        return;
+      }
+      if (!params) {
+        toast("Parâmetros indisponíveis.", "error");
+        return;
+      }
+
+      // 🔒 garante rede BSC antes de tudo
+      const okNet = await ensureBscChain();
+      if (!okNet) return toast("Troque para BNB Smart Chain no MetaMask.", "error");
+
       const w = walletInput.value.trim();
       if (!is0xAddress(w)) return toast("Cole e salve a carteira primeiro.", "error");
 
-      // garante que a carteira está salva no backend (para comissões)
       try{
-        await saveWallet(w);
-      }catch{}
+        btnSubscribe.disabled = true;
+        btnSubscribe.style.opacity = "0.7";
+        btnSubscribe.textContent = "Processando…";
 
-      // 1) tenta assinar
-      try{
         await api("/api/assinatura/subscribe", {
           method:"POST",
           token: getToken(),
@@ -303,53 +355,57 @@
 
         toast("Assinatura ativada!");
         await loadStatus();
-        return;
       }catch(e){
+        console.error(e);
         const msg = e?.message || "Falha ao assinar";
-
-        // se precisa approve, faz approve e tenta de novo
         if (msg === "APPROVE_REQUIRED") {
-          try{
-            await approveIfNeeded(w);
-          }catch(err){
-            if (String(err?.message) === "NO_PROVIDER_MOBILE") {
-              return toast("No celular, abra esta página dentro do MetaMask para confirmar.", "error");
-            }
-            if (String(err?.message) === "WRONG_WALLET_SELECTED") {
-              return toast("No MetaMask, selecione a mesma carteira que você informou.", "error");
-            }
-            console.error(err);
-            return toast("Não foi possível autorizar no MetaMask.", "error");
-          }
-
-          // tenta assinar novamente
-          try{
-            await api("/api/assinatura/subscribe", {
-              method:"POST",
-              token: getToken(),
-              body: { walletAddress: w, referrerCode: null }
-            });
-
-            toast("Assinatura ativada!");
-            await loadStatus();
-            return;
-          }catch(e2){
-            const msg2 = e2?.message || "Falha ao assinar";
-            return toast(msg2, "error");
-          }
+          toast("Falta a autorização do USDT. O MetaMask vai solicitar automaticamente na próxima tentativa.", "error");
+        } else {
+          toast(msg, "error");
         }
-
-        return toast(msg, "error");
+      }finally{
+        btnSubscribe.disabled = false;
+        btnSubscribe.style.opacity = "1";
+        btnSubscribe.textContent = "Ativar assinatura";
       }
     }
 
-    document.getElementById("btnConnect").addEventListener("click", connectWallet);
-    document.getElementById("btnSaveWallet").addEventListener("click", saveWalletManual);
-    document.getElementById("btnCheckBalances").addEventListener("click", checkBalances);
-    document.getElementById("btnSubscribe").addEventListener("click", subscribe);
+    // ---- UI: mobile guidance
+    function setupMobileBox(){
+      if (!isMobile()) return;
 
+      // Se estiver no celular e não estiver no MetaMask, mostra o bloco
+      if (!isInMetaMask()){
+        mobileBox.style.display = "block";
+      } else {
+        mobileBox.style.display = "none";
+      }
+
+      btnOpenMM.addEventListener("click", () => openInMetaMask());
+    }
+
+    // ---- events
+    btnConnect.addEventListener("click", connectWallet);
+    btnSaveWallet.addEventListener("click", saveWalletManual);
+    btnCheckBalances.addEventListener("click", checkBalances);
+    btnSubscribe.addEventListener("click", subscribe);
+
+    // Se o usuário trocar rede/conta, atualiza aviso
+    if (window.ethereum?.on){
+      window.ethereum.on("chainChanged", () => ensureBscChain());
+      window.ethereum.on("accountsChanged", (accs) => {
+        if (accs?.[0]) walletInput.value = accs[0];
+      });
+    }
+
+    setupMobileBox();
     await loadParams();
     await loadStatus();
+
+    // tenta ajustar rede no carregamento (se já estiver no MetaMask)
+    if (window.ethereum) {
+      await ensureBscChain();
+    }
   </script>
 </body>
 </html>
