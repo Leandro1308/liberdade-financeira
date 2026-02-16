@@ -10,7 +10,7 @@
   <div class="container">
     <div class="card topbar">
       <div class="brand"><span class="dot"></span> Liberdade Financeira</div>
-      <div style="display:flex; gap:10px;">
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <a class="badge" href="/index.html">Início</a>
         <a class="badge" href="/login.html">Entrar</a>
         <a class="badge" href="/dashboard.html">Dashboard</a>
@@ -19,10 +19,11 @@
 
     <div style="height:16px"></div>
 
-    <!-- ✅ UMA PÁGINA CENTRALIZADA -->
+    <!-- ✅ PÁGINA CENTRALIZADA -->
     <div class="card section" style="max-width:900px; margin:0 auto;">
       <h1 style="margin:0 0 8px; font-size:34px; line-height:1.15;">Ativar assinatura</h1>
-      <p class="muted" style="margin:0 0 14px; font-size:18px; line-height:1.6;">
+
+      <p class="muted" style="margin:0 0 14px; font-size:18px; line-height:1.6; text-align:justify;">
         Para liberar o acesso ao dashboard, você vai usar <b>uma única carteira</b>:
         ela será usada para <b>pagar a assinatura</b> e também para <b>receber suas comissões</b>.
       </p>
@@ -31,65 +32,68 @@
 
       <div style="height:14px"></div>
 
-      <!-- ✅ ORIENTAÇÕES COMPLETAS -->
+      <!-- ✅ PASSO A PASSO (SIMPLIFICADO) -->
       <div class="card" style="padding:16px; border-radius:16px;">
-        <div class="badge" style="margin-bottom:10px;">Antes de continuar</div>
+        <div class="badge" style="margin-bottom:10px;">O que você precisa fazer</div>
 
-        <div style="font-size:18px; line-height:1.7;">
-          <ol style="margin:0; padding-left:20px;">
-            <li>
-              <b>Instale o MetaMask</b> (app no celular ou extensão no PC) e <b>crie sua carteira</b>.
-              Guarde sua frase de segurança em local seguro.
-            </li>
-            <li style="margin-top:10px;">
-              No MetaMask, selecione a rede <b>BNB Smart Chain (BEP-20)</b>.
-            </li>
-            <li style="margin-top:10px;">
-              Você precisa ter <b>na mesma carteira</b>:
-              <ul style="margin:8px 0 0; padding-left:18px;">
-                <li><b>Binance Coin (BNB)</b> para a <b>taxa administrativa de autorização</b> (recomendado: <b>0,005 BNB</b> | mínimo: <b>0,002 BNB</b>)</li>
-                <li><b>Tether USD (USDT)</b> na rede <b>BNB Smart Chain (BEP-20)</b> para pagar a assinatura</li>
-              </ul>
-              <div class="muted" style="margin-top:10px;">
-                ⚠️ Se enviar USDT por outra rede (ERC20/TRC20), não funcionará aqui.
-              </div>
-            </li>
-            <li style="margin-top:10px;">
-              <b>Como depositar no lugar certo</b>:
-              <ul style="margin:8px 0 0; padding-left:18px;">
-                <li>No MetaMask, copie o seu endereço (começa com <b>0x</b>)</li>
-                <li>Envie <b>BNB</b> para esse endereço</li>
-                <li>Envie <b>USDT</b> usando a rede <b>BNB Smart Chain (BEP-20)</b></li>
-              </ul>
-            </li>
-            <li style="margin-top:10px;">
-              <b>USDT não aparece no MetaMask?</b><br/>
-              Vá em <b>Importar token</b> → pesquise por <b>Tether USD</b>.<br/>
-              Se não aparecer, use o contrato oficial abaixo (carregado automaticamente do sistema):
-            </li>
-          </ol>
-
-          <div style="height:10px"></div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-            <input id="usdtContract" class="input" readonly
-              value="Carregando contrato do USDT…"
-              style="flex:1; min-width:260px; font-size:16px; padding:14px; border-radius:14px;"/>
-            <button id="copyUsdt" class="btn">Copiar</button>
+        <div style="font-size:17px; line-height:1.75; text-align:justify;">
+          <div class="card" style="padding:14px; border-radius:14px;">
+            <div class="badge" style="font-size:13px;">Passo 1</div>
+            <p class="muted" style="margin:10px 0 0;">
+              <b>Baixe o MetaMask</b> e <b>crie sua carteira</b>.
+              Depois, selecione a rede <b>BNB Smart Chain (BEP-20)</b>.
+            </p>
           </div>
 
-          <p class="muted small" style="margin-top:10px; font-size:14.5px;">
-            Importante: essa mesma carteira será usada para <b>pagar</b> e para <b>receber comissões</b>.
-          </p>
+          <div style="height:10px"></div>
+
+          <div class="card" style="padding:14px; border-radius:14px;">
+            <div class="badge" style="font-size:13px;">Passo 2</div>
+            <p class="muted" style="margin:10px 0 0;">
+              Coloque na sua carteira:
+              <br/>• <b>USDT (BEP-20)</b> para pagar a assinatura
+              <br/>• Um pouco de <b>BNB</b> para a taxa de rede (autorização)
+            </p>
+            <p class="muted small" style="margin:10px 0 0; font-size:14.5px;">
+              ⚠️ USDT precisa estar na rede <b>BNB Smart Chain (BEP-20)</b>.
+            </p>
+          </div>
+
+          <div style="height:10px"></div>
+
+          <div class="card" style="padding:14px; border-radius:14px;">
+            <div class="badge" style="font-size:13px;">Passo 3</div>
+            <p class="muted" style="margin:10px 0 0;">
+              Informe sua carteira aqui, clique em <b>Autorizar</b> e depois em <b>Concluir assinatura</b>.
+            </p>
+          </div>
         </div>
+
+        <div style="height:12px"></div>
+
+        <!-- USDT CONTRACT (caso precise importar token) -->
+        <div class="badge" style="margin-bottom:8px;">Se precisar importar o token USDT</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <input id="usdtContract" class="input" readonly
+            value="Carregando contrato do USDT…"
+            style="flex:1; min-width:260px; font-size:16px; padding:14px; border-radius:14px;"/>
+          <button id="copyUsdt" class="btn">Copiar</button>
+        </div>
+
+        <p class="muted small" style="margin-top:10px; font-size:14.5px; text-align:justify;">
+          Dica: no MetaMask, vá em <b>Importar token</b> e cole o contrato acima (se necessário).
+        </p>
       </div>
 
       <div style="height:14px"></div>
 
-      <!-- ✅ CARTEIRA MANUAL -->
+      <!-- ✅ CARTEIRA -->
       <div class="card" style="padding:16px; border-radius:16px;">
-        <div class="badge">Carteira principal</div>
-        <p class="muted" style="margin:10px 0 0; font-size:16.5px;">
-          Cole abaixo o endereço da sua carteira (0x...). Se preferir, você pode conectar o MetaMask para preencher automaticamente.
+        <div class="badge">Sua carteira (BEP-20)</div>
+
+        <p class="muted" style="margin:10px 0 0; font-size:16.5px; text-align:justify;">
+          Você pode <b>conectar o MetaMask</b> para preencher automaticamente,
+          ou <b>colar manualmente</b> seu endereço (0x...).
         </p>
 
         <div style="height:10px"></div>
@@ -100,7 +104,7 @@
         <div style="height:10px"></div>
 
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button id="btnConnect" class="btn">Conectar MetaMask (opcional)</button>
+          <button id="btnConnect" class="btn">Conectar MetaMask</button>
           <button id="btnSaveWallet" class="btn">Salvar carteira</button>
           <button id="btnCheckBalances" class="btn ghost">Verificar saldos</button>
         </div>
@@ -111,30 +115,31 @@
 
       <div style="height:14px"></div>
 
-      <!-- ✅ AÇÕES -->
+      <!-- ✅ AÇÕES (ULTRA SIMPLES) -->
       <div class="card" style="padding:16px; border-radius:16px;">
-        <div class="badge">Ativar acesso</div>
+        <div class="badge">Finalizar assinatura</div>
 
         <div style="height:10px"></div>
 
-        <button id="btnApprove" class="btn" style="width:100%; font-size:16px; padding:14px;">
+        <button id="btnApprove" class="btn" style="width:100%; font-size:16px; padding:14px;" disabled>
           1) Autorizar pagamento (uma única vez)
         </button>
-        <p class="muted" style="margin-top:10px; font-size:15.5px; line-height:1.55;">
-          Essa etapa permite que a assinatura seja debitada em USDT. Você verá uma pequena
-          <b>taxa administrativa</b> na carteira para concluir essa autorização.
+        <p class="muted" style="margin-top:10px; font-size:15.5px; line-height:1.55; text-align:justify;">
+          Esta etapa dá permissão para debitar o USDT da assinatura.
+          O MetaMask pode cobrar uma pequena <b>taxa de rede em BNB</b> para confirmar.
         </p>
 
         <div style="height:10px"></div>
 
-        <button id="btnSubscribe" class="btn primary" style="width:100%; font-size:16.5px; padding:14px;">
-          2) Confirmar assinatura
+        <button id="btnSubscribe" class="btn primary" style="width:100%; font-size:16.5px; padding:14px;" disabled>
+          2) Concluir assinatura
         </button>
-        <p class="muted" style="margin-top:10px; font-size:15.5px; line-height:1.55;">
+        <p class="muted" style="margin-top:10px; font-size:15.5px; line-height:1.55; text-align:justify;">
           Nesta etapa sua assinatura é ativada e o acesso ao dashboard é liberado.
         </p>
 
         <div style="height:12px"></div>
+
         <div class="badge">Status da sua conta</div>
         <div id="status" class="muted" style="margin-top:8px;">Carregando…</div>
 
@@ -160,6 +165,9 @@
     const walletInput = document.getElementById("walletInput");
     const usdtContract = document.getElementById("usdtContract");
 
+    const btnApprove = document.getElementById("btnApprove");
+    const btnSubscribe = document.getElementById("btnSubscribe");
+
     let params = null;
 
     function is0xAddress(v){
@@ -168,6 +176,13 @@
     function shortAddr(a){
       if (!a) return "";
       return `${a.slice(0,6)}…${a.slice(-4)}`;
+    }
+
+    function refreshButtons(){
+      const w = walletInput.value.trim();
+      const okWallet = is0xAddress(w);
+      btnApprove.disabled = !okWallet || !params;
+      btnSubscribe.disabled = !okWallet || !params;
     }
 
     async function loadStatus(){
@@ -191,14 +206,15 @@
       try{
         params = await api("/api/assinatura/params");
         const feePct = ((params.txFeeBps || 0) / 100).toFixed(2);
-        planInfo.textContent = `Taxa administrativa: ${feePct}% | Contrato: ${shortAddr(params.contractAddress)}`;
+        planInfo.textContent = `Taxa do sistema: ${feePct}% | Contrato: ${shortAddr(params.contractAddress)}`;
 
-        // ✅ sem hardcode: vem do backend
         usdtContract.value = params.token || "—";
+        refreshButtons();
       }catch(e){
         params = null;
         planInfo.textContent = "Parâmetros indisponíveis (tente novamente).";
         usdtContract.value = "Indisponível";
+        refreshButtons();
       }
     }
 
@@ -210,6 +226,7 @@
         if (!acc) return toast("Nenhuma carteira selecionada.", "error");
         walletInput.value = acc;
         toast("Carteira preenchida.");
+        refreshButtons();
       }catch{
         toast("Falha ao conectar MetaMask.", "error");
       }
@@ -221,6 +238,7 @@
       await saveWallet(w);
       walletBox.innerHTML = `Carteira salva: <b>${w}</b>`;
       toast("Carteira vinculada.");
+      refreshButtons();
     }
 
     async function checkBalances(){
@@ -269,7 +287,7 @@
 
         const signerAddr = await signer.getAddress();
         if (signerAddr.toLowerCase() !== w.toLowerCase()) {
-          return toast("No MetaMask, selecione a mesma carteira que você colou.", "error");
+          return toast("No MetaMask, selecione a mesma carteira informada.", "error");
         }
 
         const usdtAbi = ["function approve(address spender, uint256 value) returns (bool)"];
@@ -279,7 +297,7 @@
         const feeBps = BigInt(params.txFeeBps || 0);
         const total = (price * (BigInt(10000) + feeBps)) / BigInt(10000);
 
-        toast("Autorização enviada. Confirme no MetaMask…");
+        toast("Autorize no MetaMask…");
         const tx = await usdt.approve(params.contractAddress, total);
         await tx.wait();
         toast("Autorização concluída!");
@@ -304,7 +322,7 @@
         await loadStatus();
       }catch(e){
         const msg = e?.message || "Falha ao assinar";
-        if (msg === "APPROVE_REQUIRED") toast("Você precisa autorizar o pagamento primeiro.", "error");
+        if (msg === "APPROVE_REQUIRED") toast("Primeiro clique em Autorizar pagamento.", "error");
         else toast(msg, "error");
       }
     }
@@ -326,8 +344,11 @@
       }
     });
 
+    walletInput.addEventListener("input", refreshButtons);
+
     await loadParams();
     await loadStatus();
+    refreshButtons();
   </script>
 </body>
 </html>
