@@ -47,15 +47,13 @@
 
       <div style="height:14px"></div>
 
-      <!-- ✅ ORIENTAÇÕES SIMPLIFICADAS (do jeito que você pediu) -->
+      <!-- ✅ ORIENTAÇÕES SIMPLES -->
       <div class="card" style="padding:16px; border-radius:16px;">
         <div class="badge" style="margin-bottom:10px;">O que você precisa ter na sua carteira</div>
 
         <div style="font-size:18px; line-height:1.7;">
           <ol style="margin:0; padding-left:20px;">
-            <li>
-              Instale o <b>MetaMask</b> e crie sua carteira.
-            </li>
+            <li>Instale o <b>MetaMask</b> e crie sua carteira.</li>
             <li style="margin-top:10px;">
               Faça um depósito inicial simples:
               <ul style="margin:8px 0 0; padding-left:18px;">
@@ -132,11 +130,9 @@
   </div>
 
   <script type="module">
-    import { me, requireLogged, saveWallet, getToken } from "/assets/auth.js";
+    import { me, saveWallet, getToken, setToken, requireLogged } from "/assets/auth.js";
     import { api } from "/assets/api.js";
     import { toast } from "/assets/ui.js";
-
-    requireLogged();
 
     const statusEl = document.getElementById("status");
     const planInfo = document.getElementById("planInfo");
@@ -167,17 +163,34 @@
       return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     }
     function isInMetaMask(){
-      // MetaMask Mobile injecta window.ethereum e costuma ter isMetaMask = true,
-      // mas em alguns navegadores móveis pode existir outro provider.
       return !!(window.ethereum && window.ethereum.isMetaMask);
     }
+
+    // ✅ 1) Recebe token pela URL quando abre no MetaMask e salva no storage do MetaMask
+    function bootstrapTokenFromQuery(){
+      try{
+        const url = new URL(location.href);
+        const t = url.searchParams.get("t");
+        if (t && !getToken()){
+          setToken(t);
+        }
+        if (t){
+          url.searchParams.delete("t");
+          history.replaceState({}, "", url.toString());
+        }
+      }catch{}
+    }
+
+    // ✅ 2) Abre dentro do MetaMask levando o token junto (pra não ficar branco/sem login)
     function openInMetaMask(){
-      const url = `${location.protocol}//${location.host}${location.pathname}${location.search}${location.hash}`;
-      // deep link padrão da MetaMask
-      const deep = `https://metamask.app.link/dapp/${encodeURIComponent(location.host + location.pathname + location.search)}`;
-      // tenta abrir
+      const t = getToken();
+      const url = new URL(location.href);
+      if (t) url.searchParams.set("t", t);
+
+      // MetaMask deep link espera "host/path?query" (sem https://)
+      const hostAndPath = url.host + url.pathname + url.search;
+      const deep = `https://metamask.app.link/dapp/${encodeURIComponent(hostAndPath)}`;
       location.href = deep;
-      // fallback: se não abrir, o usuário já está vendo a página com instrução
     }
 
     // ---- BNB Smart Chain (Mainnet)
@@ -186,7 +199,7 @@
       chainId: BSC_CHAIN_ID_HEX,
       chainName: "BNB Smart Chain",
       nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
-      rpcUrls: ["https://rpc.ankr.com/bsc"], // sem key (ok pra agora)
+      rpcUrls: ["https://rpc.ankr.com/bsc"],
       blockExplorerUrls: ["https://bscscan.com"],
     };
 
@@ -202,7 +215,7 @@
           return true;
         }
 
-        netInfo.innerHTML = `Rede atual: <b>${chainId}</b> — trocando para <b>BNB Smart Chain</b>...`;
+        netInfo.innerHTML = `Rede errada detectada. Trocando para <b>BNB Smart Chain</b>...`;
 
         try{
           await window.ethereum.request({
@@ -212,13 +225,11 @@
           netInfo.innerHTML = `Rede: <b>BNB Smart Chain</b>`;
           return true;
         }catch(switchErr){
-          // se a rede não existir no metamask (4902), adiciona
           if (switchErr?.code === 4902) {
             await window.ethereum.request({
               method: "wallet_addEthereumChain",
               params: [BSC_PARAMS],
             });
-            // tenta switch de novo
             await window.ethereum.request({
               method: "wallet_switchEthereumChain",
               params: [{ chainId: BSC_CHAIN_ID_HEX }],
@@ -268,9 +279,7 @@
     async function connectWallet(){
       if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
       try{
-        // tenta garantir BSC já no connect (evita ficar em Ethereum)
         await ensureBscChain();
-
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
         const acc = accounts?.[0] || null;
         if (!acc) return toast("Nenhuma carteira selecionada.", "error");
@@ -294,7 +303,6 @@
       if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
       if (!params?.token) return toast("Parâmetros indisponíveis.", "error");
 
-      // força rede correta antes de ler saldo
       const okNet = await ensureBscChain();
       if (!okNet) return toast("Troque para BNB Smart Chain no MetaMask.", "error");
 
@@ -326,16 +334,9 @@
     }
 
     async function subscribe(){
-      if (!window.ethereum) {
-        toast("MetaMask não encontrado.", "error");
-        return;
-      }
-      if (!params) {
-        toast("Parâmetros indisponíveis.", "error");
-        return;
-      }
+      if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
+      if (!params) return toast("Parâmetros indisponíveis.", "error");
 
-      // 🔒 garante rede BSC antes de tudo
       const okNet = await ensureBscChain();
       if (!okNet) return toast("Troque para BNB Smart Chain no MetaMask.", "error");
 
@@ -358,11 +359,8 @@
       }catch(e){
         console.error(e);
         const msg = e?.message || "Falha ao assinar";
-        if (msg === "APPROVE_REQUIRED") {
-          toast("Falta a autorização do USDT. O MetaMask vai solicitar automaticamente na próxima tentativa.", "error");
-        } else {
-          toast(msg, "error");
-        }
+        if (msg === "APPROVE_REQUIRED") toast("Falta a autorização do USDT. Tente novamente e confirme no MetaMask.", "error");
+        else toast(msg, "error");
       }finally{
         btnSubscribe.disabled = false;
         btnSubscribe.style.opacity = "1";
@@ -370,27 +368,29 @@
       }
     }
 
-    // ---- UI: mobile guidance
     function setupMobileBox(){
       if (!isMobile()) return;
-
-      // Se estiver no celular e não estiver no MetaMask, mostra o bloco
       if (!isInMetaMask()){
         mobileBox.style.display = "block";
       } else {
         mobileBox.style.display = "none";
       }
-
-      btnOpenMM.addEventListener("click", () => openInMetaMask());
+      btnOpenMM.addEventListener("click", openInMetaMask);
     }
 
-    // ---- events
+    // ---- bootstrap
+    bootstrapTokenFromQuery();
+
+    // se não estiver logado, agora sim redireciona (mas no MetaMask vai estar logado via query)
+    requireLogged();
+
+    setupMobileBox();
+
     btnConnect.addEventListener("click", connectWallet);
     btnSaveWallet.addEventListener("click", saveWalletManual);
     btnCheckBalances.addEventListener("click", checkBalances);
     btnSubscribe.addEventListener("click", subscribe);
 
-    // Se o usuário trocar rede/conta, atualiza aviso
     if (window.ethereum?.on){
       window.ethereum.on("chainChanged", () => ensureBscChain());
       window.ethereum.on("accountsChanged", (accs) => {
@@ -398,11 +398,9 @@
       });
     }
 
-    setupMobileBox();
     await loadParams();
     await loadStatus();
 
-    // tenta ajustar rede no carregamento (se já estiver no MetaMask)
     if (window.ethereum) {
       await ensureBscChain();
     }
