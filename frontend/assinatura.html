@@ -7,6 +7,12 @@
   <link rel="stylesheet" href="/assets/app.css"/>
 </head>
 <body>
+  <noscript>
+    <div style="padding:16px; font-family:system-ui; color:#111;">
+      Este site precisa de JavaScript habilitado.
+    </div>
+  </noscript>
+
   <div class="container">
     <div class="card topbar">
       <div class="brand"><span class="dot"></span> Liberdade Financeira</div>
@@ -151,7 +157,6 @@
 
     let params = null;
 
-    // ---- helpers
     function is0xAddress(v){
       return /^0x[a-fA-F0-9]{40}$/.test(String(v||"").trim());
     }
@@ -181,15 +186,17 @@
       }catch{}
     }
 
-    // ✅ 2) Abre dentro do MetaMask levando o token junto (pra não ficar branco/sem login)
+    // ✅ 2) Abre no MetaMask com deep link no formato correto (SEM encodeURIComponent)
     function openInMetaMask(){
       const t = getToken();
       const url = new URL(location.href);
       if (t) url.searchParams.set("t", t);
 
-      // MetaMask deep link espera "host/path?query" (sem https://)
-      const hostAndPath = url.host + url.pathname + url.search;
-      const deep = `https://metamask.app.link/dapp/${encodeURIComponent(hostAndPath)}`;
+      // MetaMask espera: domain.com/path?query (sem https://)
+      const dappUrl = url.host + url.pathname + url.search;
+
+      // IMPORTANTE: NÃO encodar o dappUrl inteiro
+      const deep = `https://metamask.app.link/dapp/${dappUrl}`;
       location.href = deep;
     }
 
@@ -381,7 +388,7 @@
     // ---- bootstrap
     bootstrapTokenFromQuery();
 
-    // se não estiver logado, agora sim redireciona (mas no MetaMask vai estar logado via query)
+    // se não estiver logado, redireciona (mas no MetaMask vai estar logado via query)
     requireLogged();
 
     setupMobileBox();
