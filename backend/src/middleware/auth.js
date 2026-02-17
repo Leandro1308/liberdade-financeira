@@ -2,11 +2,26 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { User } from "../models/User.js";
 
+function extractToken(req) {
+  // 1) Authorization: Bearer <token>
+  const header = req.headers.authorization || "";
+  const bearer = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (bearer) return bearer;
+
+  // 2) Token via querystring (?t=...)
+  const t = req.query?.t;
+  if (t && typeof t === "string" && t.trim()) return t.trim();
+
+  // 3) (Opcional) Token via cookie (se você usar cookie em algum lugar)
+  const c = req.cookies?.token;
+  if (c && typeof c === "string" && c.trim()) return c.trim();
+
+  return null;
+}
+
 export async function requireAuth(req, res, next) {
   try {
-    const header = req.headers.authorization || "";
-    const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-
+    const token = extractToken(req);
     if (!token) return res.status(401).json({ error: "Não autenticado" });
 
     const payload = jwt.verify(token, env.JWT_SECRET);
