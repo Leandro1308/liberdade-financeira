@@ -118,10 +118,8 @@
         <button id="btnSubscribe" class="btn primary" style="width:100%; font-size:16.5px; padding:14px;">
           Ativar assinatura
         </button>
-        <p class="muted" style="margin-top:10px; font-size:15.5px; line-height:1.55;">
-          Se for sua primeira vez, o MetaMask pode pedir uma confirmação extra para autorizar o débito do USDT.
-          Depois, a assinatura é ativada e o acesso ao dashboard é liberado.
-        </p>
+
+        <div id="subscribeBox" class="muted" style="margin-top:10px; font-size:15.5px; line-height:1.55;"></div>
 
         <div style="height:12px"></div>
         <div class="badge">Status da sua conta</div>
@@ -146,6 +144,7 @@
     const walletBox = document.getElementById("walletBox");
     const balancesBox = document.getElementById("balancesBox");
     const walletInput = document.getElementById("walletInput");
+    const subscribeBox = document.getElementById("subscribeBox");
 
     const btnSubscribe = document.getElementById("btnSubscribe");
     const btnConnect = document.getElementById("btnConnect");
@@ -186,16 +185,13 @@
       }catch{}
     }
 
-    // ✅ 2) Abre no MetaMask com deep link no formato correto (SEM encodeURIComponent)
+    // ✅ 2) Abre no MetaMask com deep link correto (SEM encodeURIComponent)
     function openInMetaMask(){
       const t = getToken();
       const url = new URL(location.href);
       if (t) url.searchParams.set("t", t);
 
-      // MetaMask espera: domain.com/path?query (sem https://)
       const dappUrl = url.host + url.pathname + url.search;
-
-      // IMPORTANTE: NÃO encodar o dappUrl inteiro
       const deep = `https://metamask.app.link/dapp/${dappUrl}`;
       location.href = deep;
     }
@@ -266,8 +262,10 @@
             Vencimento: <b>${sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleString("pt-BR") : "-"}</b>
           </div>
         `;
+        return sub?.status || "inactive";
       }catch{
         statusEl.textContent = "Falha ao carregar status.";
+        return "unknown";
       }
     }
 
@@ -340,6 +338,17 @@
       }
     }
 
+    // ✅ 3) Polling: espera a assinatura virar active após clicar
+    async function waitForActivation({ maxMs = 65000, everyMs = 2500 } = {}){
+      const start = Date.now();
+      while (Date.now() - start < maxMs){
+        const st = await loadStatus();
+        if (st === "active") return true;
+        await new Promise(r => setTimeout(r, everyMs));
+      }
+      return false;
+    }
+
     async function subscribe(){
       if (!window.ethereum) return toast("MetaMask não encontrado.", "error");
       if (!params) return toast("Parâmetros indisponíveis.", "error");
@@ -354,20 +363,61 @@
         btnSubscribe.disabled = true;
         btnSubscribe.style.opacity = "0.7";
         btnSubscribe.textContent = "Processando…";
+        subscribeBox.innerHTML = `Enviando solicitação…`;
 
-        await api("/api/assinatura/subscribe", {
+        // chama backend
+        const res = await api("/api/assinatura/subscribe", {
           method:"POST",
           token: getToken(),
           body: { walletAddress: w, referrerCode: null }
         });
 
-        toast("Assinatura ativada!");
-        await loadStatus();
+        // mostra retorno útil sem complicar (se houver)
+        let extra = "";
+        if (res?.txHash){
+          extra = `<br/>Transação: <b>${shortAddr(res.txHash)}</b>`;
+        }
+        subscribeBox.innerHTML = `
+          Solicitação enviada. Aguardando confirmação na rede…${extra}
+          <div class="muted small" style="margin-top:6px; font-size:14.5px;">
+            (isso pode levar alguns segundos)
+          </div>
+        `;
+
+        // ✅ aguarda ativar automaticamente
+        const ok = await waitForActivation();
+        if (ok){
+          toast("Assinatura ativada!");
+          subscribeBox.innerHTML = `✅ Assinatura ativada com sucesso.`;
+        } else {
+          toast("Ainda não confirmou. Aguarde um pouco e tente novamente.", "error");
+          subscribeBox.innerHTML = `
+            Ainda não confirmou. Se você já clicou e não apareceu “active”,
+            aguarde 1 minuto e tente novamente.
+          `;
+        }
+
       }catch(e){
         console.error(e);
+
+        // tenta extrair mensagem do backend
         const msg = e?.message || "Falha ao assinar";
-        if (msg === "APPROVE_REQUIRED") toast("Falta a autorização do USDT. Tente novamente e confirme no MetaMask.", "error");
-        else toast(msg, "error");
+        if (msg === "APPROVE_REQUIRED"){
+          subscribeBox.innerHTML = `
+            ⚠️ Falta autorização do USDT para débito.<br/>
+            Tente novamente e confirme a autorização no MetaMask.
+          `;
+          toast("Falta autorização do USDT. Tente novamente.", "error");
+        } else if (msg === "INSUFFICIENT_FUNDS" || msg === "INSUFFICIENT_BALANCE"){
+          subscribeBox.innerHTML = `
+            ⚠️ Saldo insuficiente.<br/>
+            Garanta que você tem USDT e um pouco de BNB na carteira.
+          `;
+          toast("Saldo insuficiente.", "error");
+        } else {
+          subscribeBox.innerHTML = `⚠️ ${msg}`;
+          toast(msg, "error");
+        }
       }finally{
         btnSubscribe.disabled = false;
         btnSubscribe.style.opacity = "1";
@@ -387,8 +437,6 @@
 
     // ---- bootstrap
     bootstrapTokenFromQuery();
-
-    // se não estiver logado, redireciona (mas no MetaMask vai estar logado via query)
     requireLogged();
 
     setupMobileBox();
