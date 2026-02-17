@@ -29,7 +29,6 @@
           </p>
         </div>
 
-        <!-- Mobile: abrir no MetaMask -->
         <div class="card" style="padding:16px;">
           <div class="badge" style="margin-bottom:10px;">No celular</div>
           <div class="muted" style="margin-bottom:10px;">
@@ -41,7 +40,6 @@
           </div>
         </div>
 
-        <!-- Passos simples -->
         <div class="card" style="padding:16px;">
           <div class="badge" style="margin-bottom:10px;">Antes de continuar</div>
 
@@ -60,13 +58,12 @@
             </div>
 
             <div class="small muted">
-              <b>Taxa de rede:</b> na primeira autorização (Approve), será cobrada uma taxa pequena em <b>BNB</b>
+              <b>Taxa de rede:</b> na primeira autorização, será cobrada uma taxa pequena em <b>BNB</b>
               (normalmente inferior a <b>US$ 1</b>).
             </div>
           </div>
         </div>
 
-        <!-- Carteira -->
         <div class="card" style="padding:16px;">
           <div class="badge" style="margin-bottom:10px;">Carteira principal</div>
 
@@ -80,21 +77,18 @@
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
             <button class="btn" id="btnConnect">Conectar MetaMask (opcional)</button>
             <button class="btn" id="btnSave">Salvar carteira</button>
-            <button class="btn ghost" id="btnCheck">Verificar parâmetros</button>
+            <button class="btn ghost" id="btnCheck">Verificar saldos</button>
           </div>
 
           <div class="muted small" id="savedInfo" style="margin-top:10px;display:none;"></div>
 
-          <div class="muted" id="paramsBox" style="margin-top:10px;display:none;">
-            <div class="badge" style="margin-bottom:8px;">Parâmetros</div>
-            <div>• Contrato: <b id="pContract">-</b></div>
-            <div>• USDT: <b id="pToken">-</b></div>
-            <div>• Preço (raw): <b id="pPrice">-</b></div>
-            <div>• Fee (bps): <b id="pFee">-</b></div>
+          <div class="muted" id="balancesBox" style="margin-top:10px;display:none;">
+            <div class="badge" style="margin-bottom:8px;">Saldos</div>
+            <div>• BNB: <b id="balBNB">0.0</b></div>
+            <div>• USDT: <b id="balUSDT">0.0</b></div>
           </div>
         </div>
 
-        <!-- Assinar -->
         <div class="card" style="padding:16px;">
           <div class="badge" style="margin-bottom:10px;">Ativar acesso</div>
 
@@ -103,8 +97,8 @@
           </button>
 
           <div class="small muted" style="margin-top:10px;">
-            1) Primeiro o MetaMask pode pedir <b>Approve</b> do USDT (taxa em BNB).<br/>
-            2) Depois disso, o sistema ativa sua assinatura automaticamente.
+            Se for a sua primeira vez, o MetaMask pode pedir uma confirmação extra para autorizar
+            o débito do USDT. Depois, a assinatura é ativada e o acesso ao dashboard é liberado.
           </div>
 
           <div id="statusBox" class="muted" style="margin-top:12px;">
@@ -129,9 +123,6 @@
   <script type="module">
     import { api, getToken, setToken } from "/assets/api.js";
 
-    // ===============================
-    // Toast
-    // ===============================
     function toast(msg, type){
       const el = document.getElementById('toast');
       if (!el) return;
@@ -140,9 +131,6 @@
       setTimeout(()=>{ el.className='toast'; }, 4500);
     }
 
-    // ===============================
-    // Captura token da URL (?t=...) -> localStorage
-    // ===============================
     (function captureT(){
       try{
         const u = new URL(location.href);
@@ -155,7 +143,6 @@
       }catch{}
     })();
 
-    // Deep link MetaMask preservando token salvo
     function getMetaMaskDappLink(){
       const t = getToken();
       const u = new URL(location.href);
@@ -164,9 +151,6 @@
       return 'https://metamask.app.link/dapp/' + clean;
     }
 
-    // ===============================
-    // BNB Chain auto-switch
-    // ===============================
     const BSC_CHAIN_ID = '0x38';
     const BSC_PARAMS = {
       chainId: BSC_CHAIN_ID,
@@ -212,65 +196,41 @@
       return /^0x[a-fA-F0-9]{40}$/.test((v||'').trim());
     }
 
-    // Normaliza /api/me (aceita {user:{...}} ou {...})
-    function unwrapMe(resp){
-      return resp?.user ? resp.user : resp;
-    }
-
     function setStatusUI(me){
       const st = document.getElementById('accStatus');
       const au = document.getElementById('accAuto');
       const du = document.getElementById('accDue');
       if (!st || !au || !du) return;
 
-      st.textContent = me?.subscription?.status || 'inactive';
-      const auto = me?.subscription?.renovacaoAutomatica;
+      const sub = me?.user?.subscription || me?.subscription || null;
+
+      st.textContent = sub?.status || 'inactive';
+      const auto = sub?.renovacaoAutomatica;
       au.textContent = auto ? 'SIM' : 'NÃO';
-      du.textContent = me?.subscription?.currentPeriodEnd || '-';
+      du.textContent = sub?.currentPeriodEnd || '-';
     }
 
-    // ===============================
-    // API wrappers
-    // ===============================
     async function apiGetMe(){
-      const r = await api('/api/me');
-      return unwrapMe(r);
+      return api('/api/me');
     }
 
-    async function apiSaveWallet(wallet){
-      // ✅ backend /api/me/wallet espera walletAddress
-      return api('/api/me/wallet', { method:'POST', body:{ walletAddress: wallet } });
+    async function apiSaveWallet(walletAddress){
+      // ✅ backend aceita walletAddress (e também aceita wallet via compat)
+      return api('/api/me/wallet', { method:'POST', body:{ walletAddress } });
     }
 
     async function apiParams(){
       return api('/api/assinatura/params');
     }
 
-    async function apiSubscribe(payload){
-      return api('/api/assinatura/subscribe', { method:'POST', body: payload });
+    async function apiSubscribe(walletAddress){
+      return api('/api/assinatura/subscribe', { method:'POST', body:{ walletAddress } });
     }
 
-    // ===============================
-    // ERC20 approve (sem libs) - encode approve(spender, amount)
-    // selector approve(address,uint256) = 0x095ea7b3
-    // ===============================
-    function pad64(hexNo0x){
-      return hexNo0x.padStart(64, '0');
-    }
-    function strip0x(h){ return (h || '').startsWith('0x') ? h.slice(2) : h; }
-
-    function encodeApprove(spender, amountHex){
-      const selector = '095ea7b3';
-      const addr = pad64(strip0x(spender).toLowerCase());
-      const amt  = pad64(strip0x(amountHex).toLowerCase());
-      return '0x' + selector + addr + amt;
+    async function sendTx(tx){
+      return ethereum.request({ method:'eth_sendTransaction', params:[tx] });
     }
 
-    const MAX_UINT256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-
-    // ===============================
-    // Init
-    // ===============================
     (async function init(){
       document.getElementById('btnOpenMM')?.addEventListener('click', ()=>{
         location.href = getMetaMaskDappLink();
@@ -285,7 +245,7 @@
         const me = await apiGetMe();
         setStatusUI(me);
 
-        const saved = me?.walletAddress || me?.wallet;
+        const saved = me?.user?.walletAddress || me?.walletAddress || null;
         if (saved && isValidAddress(saved)){
           document.getElementById('walletInput').value = saved;
           const info = document.getElementById('savedInfo');
@@ -297,7 +257,6 @@
       }
     })();
 
-    // Conectar
     document.getElementById('btnConnect')?.addEventListener('click', async ()=>{
       try{
         if (!window.ethereum){
@@ -316,10 +275,9 @@
       }
     });
 
-    // Salvar carteira
     document.getElementById('btnSave')?.addEventListener('click', async ()=>{
       try{
-        await apiGetMe(); // garante que está logado
+        await apiGetMe();
         const wallet = document.getElementById('walletInput').value.trim();
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (começa com 0x...).');
 
@@ -335,25 +293,27 @@
       }
     });
 
-    // Verificar parâmetros
     document.getElementById('btnCheck')?.addEventListener('click', async ()=>{
       try{
         await apiGetMe();
         const p = await apiParams();
+        await refreshNetBadge();
 
-        document.getElementById('paramsBox').style.display = 'block';
-        document.getElementById('pContract').textContent = p?.contractAddress || '-';
-        document.getElementById('pToken').textContent = p?.token || '-';
-        document.getElementById('pPrice').textContent = p?.price || '-';
-        document.getElementById('pFee').textContent = String(p?.txFeeBps ?? '-');
+        const bnb = p?.balances?.bnb ?? p?.bnb ?? null;
+        const usdt = p?.balances?.usdt ?? p?.usdt ?? null;
 
-        toast('Parâmetros carregados.');
+        if (bnb != null || usdt != null){
+          document.getElementById('balancesBox').style.display = 'block';
+          if (bnb != null) document.getElementById('balBNB').textContent = bnb;
+          if (usdt != null) document.getElementById('balUSDT').textContent = usdt;
+        } else {
+          toast('Saldos: indisponível no momento.', 'error');
+        }
       }catch(err){
-        toast(err?.message || 'Falha ao buscar parâmetros.', 'error');
+        toast(err?.message || 'Falha ao verificar saldos.', 'error');
       }
     });
 
-    // Ativar assinatura (Approve -> Subscribe)
     document.getElementById('btnSubscribe')?.addEventListener('click', async ()=>{
       try{
         const me = await apiGetMe();
@@ -366,61 +326,34 @@
         await ensureBsc();
         await refreshNetBadge();
 
-        const accounts = await ethereum.request({ method:'eth_requestAccounts' });
-        const from = accounts?.[0];
-        if (!from) throw new Error('Selecione uma conta no MetaMask.');
+        const wallet = document.getElementById('walletInput').value.trim();
+        if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
 
-        // 1) garante wallet salva/local
-        const wallet = (document.getElementById('walletInput')?.value || '').trim() || me?.walletAddress || '';
-        if (!isValidAddress(wallet)) throw new Error('Informe uma carteira válida (0x...).');
+        // garante que a wallet está salva
+        await apiSaveWallet(wallet);
 
-        // 2) pega params do contrato/token
-        const params = await apiParams();
-        const contractAddress = params?.contractAddress;
-        const tokenAddress = params?.token;
-        if (!isValidAddress(contractAddress) || !isValidAddress(tokenAddress)) {
-          throw new Error('Parâmetros do contrato inválidos. Tente novamente.');
-        }
+        const flow = await apiSubscribe(wallet);
 
-        // 3) tenta subscribe (gasless)
-        let resp;
-        try{
-          resp = await apiSubscribe({ walletAddress: wallet, referrerCode: (localStorage.getItem("LF_REF") || null) });
-        }catch(err){
-          // Se precisa Approve, fazemos o approve e tentamos de novo
-          const msg = (err?.message || '').toUpperCase();
-          if (msg.includes('APPROVE_REQUIRED')){
-            toast('Precisamos autorizar (Approve) o USDT no MetaMask…');
+        if (Array.isArray(flow?.txs) && flow.txs.length){
+          const accounts = await ethereum.request({ method:'eth_requestAccounts' });
+          const from = accounts?.[0];
+          if (!from) throw new Error('Selecione uma conta no MetaMask.');
 
-            // Approve ilimitado (MAX_UINT256) pro contrato gastar
-            const data = encodeApprove(contractAddress, MAX_UINT256);
-
-            const txHash = await ethereum.request({
-              method: 'eth_sendTransaction',
-              params: [{
-                from,
-                to: tokenAddress,
-                data,
-                value: '0x0'
-              }]
-            });
-
-            toast('Approve enviado. Aguarde confirmação na rede…');
-
-            // espera curta pra rede “ver” allowance (sem travar)
-            await new Promise(r => setTimeout(r, 7000));
-
-            // tenta subscribe novamente
-            resp = await apiSubscribe({ walletAddress: wallet, referrerCode: (localStorage.getItem("LF_REF") || null) });
-          } else {
-            throw err;
+          for (const raw of flow.txs){
+            const tx = Object.assign({}, raw);
+            tx.from = tx.from || from;
+            tx.value = tx.value || '0x0';
+            await sendTx(tx);
           }
-        }
 
-        if (resp?.ok) {
-          toast('Assinatura ativada! Atualizando status…');
+          if (flow.action === "approve") {
+            toast('Aprovação enviada no MetaMask. Aguarde confirmar e clique novamente em "Ativar assinatura".');
+            return;
+          }
+
+          toast('Transações enviadas. Confirme no MetaMask e aguarde a rede.');
         } else {
-          toast('Processo enviado. Atualizando status…');
+          toast('Processo iniciado. Aguarde alguns segundos e atualize o status.');
         }
 
         const me2 = await apiGetMe();
