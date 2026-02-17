@@ -17,9 +17,10 @@ function getTokenFromUrl() {
 function captureTokenOnce() {
   const t = getTokenFromUrl();
   if (!t) return;
-  try {
-    localStorage.setItem(TOKEN_KEY, t);
-  } catch {}
+
+  try { localStorage.setItem(TOKEN_KEY, t); } catch {}
+
+  // remove o token da URL após capturar
   try {
     const u = new URL(location.href);
     u.searchParams.delete("t");
@@ -36,19 +37,33 @@ function getStoredToken() {
   }
 }
 
+export function setToken(token) {
+  try {
+    if (!token) localStorage.removeItem(TOKEN_KEY);
+    else localStorage.setItem(TOKEN_KEY, String(token).trim());
+  } catch {}
+}
+
+export function getToken() {
+  return getStoredToken();
+}
+
 captureTokenOnce();
 
 export async function api(path, { method = "GET", token = null, body = null } = {}) {
   const headers = { "Content-Type": "application/json" };
 
-  // ✅ Se não passar token manualmente, usa o token salvo
   const autoToken = token || getStoredToken();
   if (autoToken) headers.Authorization = `Bearer ${autoToken}`;
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  // ✅ anti-cache em GET (evita pegar resposta cacheada)
+  const url = new URL(`${API_BASE}${path}`);
+  if (method === "GET") url.searchParams.set("_t", Date.now().toString());
+
+  const res = await fetch(url.toString(), {
     method,
     headers,
-    credentials: "include", // ✅ mantém cookie se existir (não quebra nada)
+    credentials: "include",
     body: body ? JSON.stringify(body) : null
   });
 
