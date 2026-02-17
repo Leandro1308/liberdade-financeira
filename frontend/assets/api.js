@@ -20,7 +20,6 @@ function captureTokenOnce() {
 
   try { localStorage.setItem(TOKEN_KEY, t); } catch {}
 
-  // remove o token da URL após capturar
   try {
     const u = new URL(location.href);
     u.searchParams.delete("t");
@@ -51,16 +50,12 @@ export function getToken() {
 captureTokenOnce();
 
 export async function api(path, { method = "GET", token = null, body = null } = {}) {
-  const headers = {};
-
-  // ✅ Só define Content-Type quando existe body
-  const hasBody = body !== null && body !== undefined && method !== "GET" && method !== "HEAD";
-  if (hasBody) headers["Content-Type"] = "application/json";
+  const headers = { "Content-Type": "application/json" };
 
   const autoToken = token || getStoredToken();
   if (autoToken) headers.Authorization = `Bearer ${autoToken}`;
 
-  // ✅ anti-cache em GET
+  // anti-cache em GET
   const url = new URL(`${API_BASE}${path}`);
   if (method === "GET") url.searchParams.set("_t", Date.now().toString());
 
@@ -68,8 +63,7 @@ export async function api(path, { method = "GET", token = null, body = null } = 
     method,
     headers,
     credentials: "include",
-    // ✅ nunca enviar body em GET/HEAD
-    body: hasBody ? JSON.stringify(body) : undefined
+    body: body ? JSON.stringify(body) : null
   });
 
   const contentType = res.headers.get("content-type") || "";
