@@ -9,22 +9,26 @@ import { User } from "../models/User.js";
 const router = Router();
 
 router.get("/", requireAuth, async (req, res) => {
+  const user = {
+    name: req.user.name,
+    email: req.user.email,
+    affiliateCode: req.user.affiliateCode,
+    referrerCode: req.user.referrerCode,
+    walletAddress: req.user.walletAddress || null,
+    subscription: req.user.subscription,
+  };
+
+  // ✅ mantém o formato atual (user:{...})
+  // ✅ e espelha no topo para não quebrar telas antigas
   return res.json({
-    user: {
-      name: req.user.name,
-      email: req.user.email,
-      affiliateCode: req.user.affiliateCode,
-      referrerCode: req.user.referrerCode,
-      walletAddress: req.user.walletAddress || null,
-      subscription: req.user.subscription
-    }
+    user,
+    ...user,
   });
 });
 
-// ✅ Aceita tanto {walletAddress:"0x..."} quanto {wallet:"0x..."} sem quebrar frontend antigo
 const WalletSchema = z.object({
   walletAddress: z.string().min(10).optional(),
-  wallet: z.string().min(10).optional()
+  wallet: z.string().min(10).optional(),
 });
 
 router.post("/wallet", requireAuth, async (req, res) => {
