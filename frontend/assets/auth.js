@@ -1,7 +1,23 @@
 // frontend/assets/auth.js
 import { api, getToken, setToken } from "/assets/api.js";
 
-// 🔁 Migração: se você já usou outra chave antiga, reaproveita sem quebrar nada
+// ===============================
+// Helpers
+// ===============================
+function addTokenToLinks() {
+  const t = getToken();
+  if (!t) return;
+
+  document.querySelectorAll('a[href^="/"]').forEach((a) => {
+    try {
+      const u = new URL(a.getAttribute("href"), location.origin);
+      if (!u.searchParams.get("t")) u.searchParams.set("t", t);
+      a.setAttribute("href", u.pathname + u.search + u.hash);
+    } catch {}
+  });
+}
+
+// 🔁 Migração: se existir token salvo em chaves antigas, reaproveita
 function migrateLegacyToken() {
   try {
     const current = getToken();
@@ -18,27 +34,35 @@ function migrateLegacyToken() {
   } catch {}
 }
 
-function addTokenToLinks() {
-  const t = getToken();
-  if (!t) return;
+// Pega token de várias formas possíveis sem depender do backend exato
+function extractTokenFromResponse(data) {
+  if (!data) return null;
 
-  // adiciona token só em links internos (mesmo domínio)
-  document.querySelectorAll('a[href^="/"]').forEach((a) => {
-    try {
-      const u = new URL(a.getAttribute("href"), location.origin);
-      if (!u.searchParams.get("t")) u.searchParams.set("t", t);
-      a.setAttribute("href", u.pathname + u.search + u.hash);
-    } catch {}
-  });
+  // formatos comuns
+  const candidates = [
+    data.token,
+    data.accessToken,
+    data.jwt,
+    data.bearer,
+    data?.data?.token,
+    data?.data?.accessToken,
+    data?.data?.jwt,
+  ];
+
+  for (const c of candidates) {
+    if (c && String(c).trim()) return String(c).trim();
+  }
+
+  // às vezes vem como string pura
+  if (typeof data === "string" && data.trim()) return data.trim();
+
+  return null;
 }
 
-// ✅ Checagem "real" do status HTTP para decidir se limpa token ou não
+// Faz /api/me com fetch direto para captar status real (não deslogar por rede)
 async function safeMeCheck() {
   const t = getToken();
-  if (!t) {
-    // sem token -> nem tenta
-    return { ok: false, status: 401, data: null };
-  }
+  if (!t) return { ok: false, status: 401, data: null };
 
   try {
     const res = await fetch(`${location.origin}/api/me?_t=${Date.now()}`, {
@@ -53,49 +77,79 @@ async function safeMeCheck() {
       : await res.text().catch(() => "");
 
     return { ok: res.ok, status: res.status, data };
-  } catch (e) {
-    // erro de rede / fetch falhou -> NÃO é motivo pra limpar token
+  } catch {
+    // erro de rede -> não limpar token
     return { ok: false, status: 0, data: null };
   }
 }
 
+// ===============================
+// Login (usado em login.html)
+// ===============================
+export async function login(email, password) {
+  const e = String(email || "").trim();
+  const p = String(password || "");
+
+  if (!e || !p) throw new Error("Informe e-mail e senha.");
+
+  // chama seu backend
+  const data = await api("/api/auth/login", {
+    method: "POST",
+    body: { email: e, password: p },
+  });
+
+  const token = extractTokenFromResponse(data);
+  if (!token) {
+    // se backend retornar algo diferente, mostramos erro amigável
+    throw new Error("Login OK, mas o servidor não retornou token.");
+  }
+
+  setToken(token);
+
+  // opcional: manter token nos links internos após login
+  addTokenToLinks();
+
+  return data;
+}
+
+// (Opcional) Logout, se você quiser usar depois
+export function logout({ redirect = true } = {}) {
+  try { setToken(null); } catch {}
+  if (redirect) location.href = "/login.html";
+}
+
+// ===============================
+// Proteção de páginas privadas
+// ===============================
 export async function ensureLoggedIn({ redirectToLogin = true } = {}) {
   migrateLegacyToken();
 
   const token = getToken();
-
-  // sem token: depende de cookie. Como seu backend usa Bearer, redireciona.
   if (!token) {
     if (redirectToLogin) location.href = "/login.html";
     return null;
   }
 
-  // ✅ primeiro tenta checar com status real
   const check = await safeMeCheck();
 
   if (check.ok) {
-    // mantém links com token para não "cair" em páginas sem token
     addTokenToLinks();
-
-    // Se sua API retorna { user: {...} }, devolve igual
     return check.data;
   }
 
-  // ✅ só limpa token se o servidor realmente rejeitou (401/403)
+  // só limpa token se o servidor realmente rejeitou
   if (check.status === 401 || check.status === 403) {
     setToken(null);
     if (redirectToLogin) location.href = "/login.html";
     return null;
   }
 
-  // ❗ Qualquer outro erro (0 rede, 5xx etc) não deve deslogar
-  // apenas tenta usar o api() normal como fallback
+  // erro de rede / 5xx -> não desloga; tenta fallback via api()
   try {
     const me = await api("/api/me");
     addTokenToLinks();
     return me;
   } catch {
-    // aqui também NÃO limpa token (para evitar logout por instabilidade)
     if (redirectToLogin) location.href = "/login.html";
     return null;
   }
