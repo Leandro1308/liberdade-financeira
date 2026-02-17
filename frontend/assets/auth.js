@@ -1,56 +1,41 @@
-import { api } from "./api.js";
+import { api, getToken, setToken } from "/assets/api.js";
 
-const KEY = "LF_TOKEN";
+function addTokenToLinks() {
+  const t = getToken();
+  if (!t) return;
 
-export function getToken() {
-  return localStorage.getItem(KEY);
+  // adiciona token só em links internos (mesmo domínio)
+  document.querySelectorAll('a[href^="/"]').forEach(a => {
+    try {
+      const u = new URL(a.getAttribute("href"), location.origin);
+      // não poluir se já tem
+      if (!u.searchParams.get("t")) u.searchParams.set("t", t);
+      a.setAttribute("href", u.pathname + u.search + u.hash);
+    } catch {}
+  });
 }
 
-export function setToken(token) {
-  localStorage.setItem(KEY, token);
-}
-
-export function clearToken() {
-  localStorage.removeItem(KEY);
-}
-
-export async function me() {
+export async function ensureLoggedIn({ redirectToLogin = true } = {}) {
   const token = getToken();
-  if (!token) return null;
-  return api("/api/me", { token });
-}
 
-export async function login(email, password) {
-  const data = await api("/api/auth/login", { method:"POST", body:{ email, password } });
-  setToken(data.token);
-  return data;
-}
-
-export async function register(name, email, password, ref=null) {
-  const data = await api("/api/auth/register", { method:"POST", body:{ name, email, password, ref } });
-  setToken(data.token);
-  return data;
-}
-
-// ✅ NOVO: salva carteira no backend
-export async function saveWallet(walletAddress) {
-  const token = getToken();
-  return api("/api/me/wallet", { method:"POST", token, body:{ walletAddress } });
-}
-
-export function requireLogged() {
-  const token = getToken();
+  // sem token: depende de cookie. Se seu sistema não usa cookie, redireciona
   if (!token) {
-    location.href = "/login.html";
+    if (redirectToLogin) location.href = "/login.html";
     return null;
   }
-  return token;
+
+  try {
+    const me = await api("/api/me");
+    // mantém links com token para não "cair" em /assinatura.html sem token
+    addTokenToLinks();
+    return me;
+  } catch (e) {
+    // token inválido/expirado
+    setToken(null);
+    if (redirectToLogin) location.href = "/login.html";
+    return null;
+  }
 }
 
-export function requireActive(sub) {
-  if (!sub || sub.status !== "active") {
-    location.href = "/assinatura.html";
-    return false;
-  }
-  return true;
-}
+// roda automaticamente em páginas que incluem auth.js
+ensureLoggedIn().catch(()=>{});
