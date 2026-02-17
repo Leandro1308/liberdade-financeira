@@ -79,6 +79,22 @@ async function safeMeCheck() {
   }
 }
 
+function isPublicPage() {
+  // ✅ páginas que NÃO devem redirecionar
+  const p = (location.pathname || "/").toLowerCase();
+
+  // home (/) e páginas públicas
+  const publicPaths = [
+    "/",
+    "/index.html",
+    "/login.html",
+    "/criar-conta.html",
+    "/cadastro.html",
+  ];
+
+  return publicPaths.includes(p);
+}
+
 // ===============================
 // Login (usado em login.html)
 // ===============================
@@ -112,9 +128,19 @@ export function logout({ redirect = true } = {}) {
 export async function ensureLoggedIn({ redirectToLogin = true } = {}) {
   migrateLegacyToken();
 
+  // ✅ Se for página pública, não faz redirect automático (evita loop)
+  if (isPublicPage()) {
+    // se tiver token, só melhora links
+    addTokenToLinks();
+    return null;
+  }
+
   const token = getToken();
   if (!token) {
-    if (redirectToLogin) location.href = "/login.html";
+    if (redirectToLogin) {
+      const next = encodeURIComponent(location.pathname + location.search + location.hash);
+      location.href = `/login.html?next=${next}`;
+    }
     return null;
   }
 
@@ -128,7 +154,10 @@ export async function ensureLoggedIn({ redirectToLogin = true } = {}) {
   // só limpa token se o servidor realmente rejeitou
   if (check.status === 401 || check.status === 403) {
     setToken(null);
-    if (redirectToLogin) location.href = "/login.html";
+    if (redirectToLogin) {
+      const next = encodeURIComponent(location.pathname + location.search + location.hash);
+      location.href = `/login.html?next=${next}`;
+    }
     return null;
   }
 
@@ -138,10 +167,13 @@ export async function ensureLoggedIn({ redirectToLogin = true } = {}) {
     addTokenToLinks();
     return me;
   } catch {
-    if (redirectToLogin) location.href = "/login.html";
+    if (redirectToLogin) {
+      const next = encodeURIComponent(location.pathname + location.search + location.hash);
+      location.href = `/login.html?next=${next}`;
+    }
     return null;
   }
 }
 
-// roda automaticamente em páginas que incluem auth.js
+// ✅ roda automaticamente SOMENTE em páginas que não são públicas
 ensureLoggedIn().catch(() => {});
