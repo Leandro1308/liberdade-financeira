@@ -116,19 +116,20 @@
             <a class="btn ghost" href="/dashboard.html" style="display:inline-block;">Ir para dashboard</a>
           </div>
         </div>
-
       </div>
     </div>
 
     <div class="toast" id="toast"></div>
   </div>
 
-  <script src="/assets/api.js"></script>
   <script src="/assets/ui.js"></script>
 
-  <script>
+  <!-- ✅ IMPORTANTE: módulo (para conseguir usar /assets/api.js com export) -->
+  <script type="module">
+    import { api, getToken, setToken } from "/assets/api.js";
+
     // ===============================
-    // Toast fallback
+    // Toast
     // ===============================
     function toast(msg, type){
       const el = document.getElementById('toast');
@@ -139,67 +140,26 @@
     }
 
     // ===============================
-    // ✅ AUTH: token via ?t=... (query) + localStorage + Authorization header
+    // Captura token da URL (?t=...) -> localStorage
+    // (sem quebrar nada)
     // ===============================
-    const TOKEN_KEY = 'lf_token';
-
-    function getTokenFromUrl(){
+    (function captureT(){
       try{
         const u = new URL(location.href);
-        const t = u.searchParams.get('t');
-        return t && String(t).trim() ? String(t).trim() : null;
-      }catch(e){
-        return null;
-      }
-    }
+        const t = u.searchParams.get("t");
+        if (t && t.trim()){
+          setToken(t.trim());
+          u.searchParams.delete("t");
+          history.replaceState({}, "", u.toString());
+        }
+      }catch{}
+    })();
 
-    function saveToken(token){
-      try{ localStorage.setItem(TOKEN_KEY, token); }catch(e){}
-    }
-
-    function getToken(){
-      const tUrl = getTokenFromUrl();
-      if (tUrl) return tUrl;
-      try{
-        const t = localStorage.getItem(TOKEN_KEY);
-        return t && String(t).trim() ? String(t).trim() : null;
-      }catch(e){
-        return null;
-      }
-    }
-
-    function keepTokenInUrl(){
-      const token = getTokenFromUrl();
-      if (!token) return;
-      saveToken(token);
-      // remove ?t=... da URL para não ficar exposto (mantém navegação limpa)
-      try{
-        const u = new URL(location.href);
-        u.searchParams.delete('t');
-        history.replaceState({}, '', u.toString());
-      }catch(e){}
-    }
-
-    async function apiFetch(path, opts){
-      const token = getToken();
-      const headers = Object.assign({}, (opts && opts.headers) || {});
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-
-      const finalOpts = Object.assign({
-        credentials: 'include' // mantém cookie se existir, mas não depende dele
-      }, opts || {}, { headers });
-
-      return fetch(path, finalOpts);
-    }
-
-    // ===============================
-    // MetaMask deep link (mantendo token salvo)
-    // ===============================
+    // Deep link MetaMask preservando token salvo
     function getMetaMaskDappLink(){
-      const token = getToken(); // token do localStorage ou URL original
-      // Monta URL atual (sem expor token se já foi limpo) — mas se tiver token, adiciona ao link do MetaMask
+      const t = getToken();
       const u = new URL(location.href);
-      if (token) u.searchParams.set('t', token);
+      if (t) u.searchParams.set("t", t);
       const clean = u.toString().replace(/^https?:\/\//, '');
       return 'https://metamask.app.link/dapp/' + clean;
     }
@@ -207,7 +167,7 @@
     // ===============================
     // BNB Chain auto-switch
     // ===============================
-    const BSC_CHAIN_ID = '0x38'; // 56
+    const BSC_CHAIN_ID = '0x38';
     const BSC_PARAMS = {
       chainId: BSC_CHAIN_ID,
       chainName: 'BNB Chain',
@@ -222,17 +182,11 @@
         const current = await ethereum.request({ method:'eth_chainId' });
         if (current === BSC_CHAIN_ID) return true;
 
-        await ethereum.request({
-          method:'wallet_switchEthereumChain',
-          params:[{ chainId: BSC_CHAIN_ID }]
-        });
+        await ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId: BSC_CHAIN_ID }] });
         return true;
       }catch(err){
         if (err && err.code === 4902){
-          await ethereum.request({
-            method:'wallet_addEthereumChain',
-            params:[BSC_PARAMS]
-          });
+          await ethereum.request({ method:'wallet_addEthereumChain', params:[BSC_PARAMS] });
           return true;
         }
         throw err;
@@ -250,58 +204,9 @@
         const chainId = await ethereum.request({ method:'eth_chainId' });
         const label = (chainId === BSC_CHAIN_ID) ? 'BNB Chain' : ('Chain ' + chainId);
         badge.innerHTML = 'Rede: <b style="margin-left:6px">' + label + '</b>';
-      }catch(e){
+      }catch{
         badge.innerHTML = 'Rede: <b style="margin-left:6px">-</b>';
       }
-    }
-
-    // ===============================
-    // API do seu backend
-    // ===============================
-    async function apiGetMe(){
-      const r = await apiFetch('/api/me', { method:'GET' });
-      if (!r.ok){
-        const data = await r.json().catch(()=> ({}));
-        throw new Error(data?.error || 'Não autenticado.');
-      }
-      return r.json();
-    }
-
-    async function apiSaveWallet(wallet){
-      const r = await apiFetch('/api/me/wallet', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ wallet })
-      });
-      if (!r.ok){
-        const data = await r.json().catch(async ()=> ({ error: await r.text().catch(()=> '') }));
-        throw new Error(data?.error || 'Falha ao salvar carteira.');
-      }
-      return r.json().catch(()=> ({}));
-    }
-
-    async function apiParams(){
-      const r = await apiFetch('/api/assinatura/params', { method:'GET' });
-      if (!r.ok){
-        const data = await r.json().catch(()=> ({}));
-        throw new Error(data?.error || 'Falha ao carregar parâmetros.');
-      }
-      return r.json();
-    }
-
-    async function apiSubscribe(){
-      const r = await apiFetch('/api/assinatura/subscribe', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({})
-      });
-      const data = await r.json().catch(()=> ({}));
-      if (!r.ok) throw new Error(data?.error || 'Falha ao iniciar assinatura.');
-      return data;
-    }
-
-    async function sendTx(tx){
-      return ethereum.request({ method:'eth_sendTransaction', params:[tx] });
     }
 
     function isValidAddress(v){
@@ -314,19 +219,40 @@
       const du = document.getElementById('accDue');
       if (!st || !au || !du) return;
 
-      st.textContent = me?.assinatura?.status || me?.status || 'inactive';
-      au.textContent = (me?.assinatura?.autoRenew ?? me?.autoRenew) ? 'SIM' : 'NÃO';
-      du.textContent = me?.assinatura?.vencimento || me?.dueDate || '-';
+      st.textContent = me?.subscription?.status || me?.assinatura?.status || me?.status || 'inactive';
+      const auto = me?.subscription?.renovacaoAutomatica ?? me?.assinatura?.autoRenew ?? me?.autoRenew;
+      au.textContent = auto ? 'SIM' : 'NÃO';
+      du.textContent = me?.subscription?.currentPeriodEnd || me?.assinatura?.vencimento || me?.dueDate || '-';
+    }
+
+    // ===============================
+    // API wrappers (agora com token automático via api.js)
+    // ===============================
+    async function apiGetMe(){
+      return api('/api/me');
+    }
+
+    async function apiSaveWallet(wallet){
+      return api('/api/me/wallet', { method:'POST', body:{ wallet } });
+    }
+
+    async function apiParams(){
+      return api('/api/assinatura/params');
+    }
+
+    async function apiSubscribe(){
+      return api('/api/assinatura/subscribe', { method:'POST', body:{} });
+    }
+
+    async function sendTx(tx){
+      return ethereum.request({ method:'eth_sendTransaction', params:[tx] });
     }
 
     // ===============================
     // Init
     // ===============================
     (async function init(){
-      // ✅ captura ?t=... e salva (e remove da URL)
-      keepTokenInUrl();
-
-      document.getElementById('btnOpenMM').addEventListener('click', ()=>{
+      document.getElementById('btnOpenMM')?.addEventListener('click', ()=>{
         location.href = getMetaMaskDappLink();
       });
 
@@ -336,25 +262,25 @@
         ethereum.on?.('chainChanged', ()=>{ refreshNetBadge(); });
       }
 
-      // carrega status
       try{
         const me = await apiGetMe();
         setStatusUI(me);
 
-        if (me?.wallet && isValidAddress(me.wallet)){
-          document.getElementById('walletInput').value = me.wallet;
+        const saved = me?.walletAddress || me?.wallet;
+        if (saved && isValidAddress(saved)){
+          document.getElementById('walletInput').value = saved;
           const info = document.getElementById('savedInfo');
           info.style.display = 'block';
-          info.innerHTML = 'Carteira salva: <b>' + me.wallet + '</b>';
+          info.innerHTML = 'Carteira salva: <b>' + saved + '</b>';
         }
       }catch(e){
-        // Se não autenticou, mostra claramente (isso é o que estava te travando)
-        toast(e?.message || 'Faça login para continuar.', 'error');
+        // aqui agora só dá erro se realmente não houver token válido
+        toast(e?.message || 'Não autenticado.', 'error');
       }
     })();
 
-    // Conectar (opcional)
-    document.getElementById('btnConnect').addEventListener('click', async ()=>{
+    // Conectar
+    document.getElementById('btnConnect')?.addEventListener('click', async ()=>{
       try{
         if (!window.ethereum){
           toast('MetaMask não detectado. No celular, use "Abrir no MetaMask".', 'error');
@@ -372,9 +298,10 @@
       }
     });
 
-    // Salvar carteira
-    document.getElementById('btnSave').addEventListener('click', async ()=>{
+    // Salvar carteira (AGORA autenticado via Bearer)
+    document.getElementById('btnSave')?.addEventListener('click', async ()=>{
       try{
+        await apiGetMe(); // garante que está logado
         const wallet = document.getElementById('walletInput').value.trim();
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (começa com 0x...).');
 
@@ -391,8 +318,9 @@
     });
 
     // Verificar saldos
-    document.getElementById('btnCheck').addEventListener('click', async ()=>{
+    document.getElementById('btnCheck')?.addEventListener('click', async ()=>{
       try{
+        await apiGetMe();
         const p = await apiParams();
         await refreshNetBadge();
 
@@ -404,7 +332,7 @@
           if (bnb != null) document.getElementById('balBNB').textContent = bnb;
           if (usdt != null) document.getElementById('balUSDT').textContent = usdt;
         } else {
-          toast('Saldos: verificação disponível após autenticar e conectar na BNB Chain.', 'error');
+          toast('Saldos: indisponível no momento.', 'error');
         }
       }catch(err){
         toast(err?.message || 'Falha ao verificar saldos.', 'error');
@@ -412,9 +340,8 @@
     });
 
     // Ativar assinatura
-    document.getElementById('btnSubscribe').addEventListener('click', async ()=>{
+    document.getElementById('btnSubscribe')?.addEventListener('click', async ()=>{
       try{
-        // ✅ primeiro: precisa estar autenticado
         await apiGetMe();
 
         if (!window.ethereum){
@@ -441,23 +368,13 @@
 
           toast('Transações enviadas. Confirme no MetaMask e aguarde a rede.');
         } else {
-          toast('Fluxo iniciado. Confirme as telas no MetaMask.', 'success');
+          toast('Confirme as telas no MetaMask para concluir.', 'success');
         }
 
         const me = await apiGetMe();
         setStatusUI(me);
-
       }catch(err){
-        const m = (err?.message || '').toLowerCase();
-        if (m.includes('não autenticado') || m.includes('faça login')){
-          toast('Você precisa estar logado para assinar. Volte ao login e tente novamente.', 'error');
-        } else if (m.includes('user rejected') || m.includes('rejeit') || m.includes('denied')){
-          toast('Você cancelou no MetaMask. Tente novamente e confirme as telas.', 'error');
-        } else if (m.includes('chain')){
-          toast('Troque para BNB Chain no MetaMask e tente novamente.', 'error');
-        } else {
-          toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
-        }
+        toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
       }
     });
   </script>
