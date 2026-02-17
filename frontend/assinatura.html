@@ -29,7 +29,6 @@
           </p>
         </div>
 
-        <!-- Mobile: abrir no MetaMask -->
         <div class="card" style="padding:16px;">
           <div class="badge" style="margin-bottom:10px;">No celular</div>
           <div class="muted" style="margin-bottom:10px;">
@@ -41,7 +40,6 @@
           </div>
         </div>
 
-        <!-- Passos simples -->
         <div class="card" style="padding:16px;">
           <div class="badge" style="margin-bottom:10px;">Antes de continuar</div>
 
@@ -66,7 +64,6 @@
           </div>
         </div>
 
-        <!-- Carteira -->
         <div class="card" style="padding:16px;">
           <div class="badge" style="margin-bottom:10px;">Carteira principal</div>
 
@@ -92,7 +89,6 @@
           </div>
         </div>
 
-        <!-- Assinar -->
         <div class="card" style="padding:16px;">
           <div class="badge" style="margin-bottom:10px;">Ativar acesso</div>
 
@@ -124,13 +120,9 @@
 
   <script src="/assets/ui.js"></script>
 
-  <!-- ✅ IMPORTANTE: módulo (para conseguir usar /assets/api.js com export) -->
   <script type="module">
     import { api, getToken, setToken } from "/assets/api.js";
 
-    // ===============================
-    // Toast
-    // ===============================
     function toast(msg, type){
       const el = document.getElementById('toast');
       if (!el) return;
@@ -139,10 +131,7 @@
       setTimeout(()=>{ el.className='toast'; }, 4500);
     }
 
-    // ===============================
     // Captura token da URL (?t=...) -> localStorage
-    // (sem quebrar nada)
-    // ===============================
     (function captureT(){
       try{
         const u = new URL(location.href);
@@ -155,7 +144,15 @@
       }catch{}
     })();
 
-    // Deep link MetaMask preservando token salvo
+    // ✅ Se não tiver token, manda pro login e volta pra cá
+    function ensureTokenOrRedirect(){
+      const t = getToken();
+      if (t) return true;
+      const next = encodeURIComponent(location.pathname + location.search + location.hash);
+      location.href = `/login.html?next=${next}`;
+      return false;
+    }
+
     function getMetaMaskDappLink(){
       const t = getToken();
       const u = new URL(location.href);
@@ -164,9 +161,6 @@
       return 'https://metamask.app.link/dapp/' + clean;
     }
 
-    // ===============================
-    // BNB Chain auto-switch
-    // ===============================
     const BSC_CHAIN_ID = '0x38';
     const BSC_PARAMS = {
       chainId: BSC_CHAIN_ID,
@@ -219,39 +213,19 @@
       const du = document.getElementById('accDue');
       if (!st || !au || !du) return;
 
-      // backend atual: user.subscription.{status, renovacaoAutomatica, currentPeriodEnd}
-      st.textContent = me?.subscription?.status || me?.assinatura?.status || me?.status || 'inactive';
-
-      const auto = me?.subscription?.renovacaoAutomatica ?? me?.assinatura?.autoRenew ?? me?.autoRenew;
+      const sub = me?.user?.subscription || me?.subscription || me?.assinatura || {};
+      st.textContent = sub.status || 'inactive';
+      const auto = sub.renovacaoAutomatica ?? sub.autoRenew;
       au.textContent = auto ? 'SIM' : 'NÃO';
-
-      du.textContent = me?.subscription?.currentPeriodEnd || me?.assinatura?.vencimento || me?.dueDate || '-';
+      du.textContent = sub.currentPeriodEnd || sub.vencimento || '-';
     }
 
-    // ===============================
-    // Normalização do /api/me
-    // ✅ compatível com:
-    // - { user: {...} }  (seu backend atual)
-    // - {...}            (caso exista algum fluxo antigo)
-    // ===============================
-    function normalizeMe(payload){
-      if (!payload) return null;
-      if (payload.user && typeof payload.user === "object") return payload.user;
-      return payload; // fallback
-    }
-
-    // ===============================
-    // API wrappers (token automático via api.js)
-    // ===============================
     async function apiGetMe(){
-      const raw = await api('/api/me');
-      const me = normalizeMe(raw);
-      if (!me) throw new Error("Não autenticado.");
-      return me;
+      return api('/api/me');
     }
 
+    // ✅ CORREÇÃO: backend espera walletAddress
     async function apiSaveWallet(walletAddress){
-      // ✅ backend exige { walletAddress }
       return api('/api/me/wallet', { method:'POST', body:{ walletAddress } });
     }
 
@@ -267,13 +241,13 @@
       return ethereum.request({ method:'eth_sendTransaction', params:[tx] });
     }
 
-    // ===============================
-    // Init
-    // ===============================
     (async function init(){
       document.getElementById('btnOpenMM')?.addEventListener('click', ()=>{
         location.href = getMetaMaskDappLink();
       });
+
+      // Se não tiver token, redireciona pro login e para aqui
+      if (!ensureTokenOrRedirect()) return;
 
       await refreshNetBadge();
 
@@ -285,9 +259,7 @@
         const me = await apiGetMe();
         setStatusUI(me);
 
-        // ✅ backend atual: walletAddress
-        const saved = me?.walletAddress || me?.wallet || null;
-
+        const saved = me?.user?.walletAddress || me?.walletAddress || me?.wallet;
         if (saved && isValidAddress(saved)){
           document.getElementById('walletInput').value = saved;
           const info = document.getElementById('savedInfo');
@@ -299,7 +271,6 @@
       }
     })();
 
-    // Conectar
     document.getElementById('btnConnect')?.addEventListener('click', async ()=>{
       try{
         if (!window.ethereum){
@@ -318,10 +289,10 @@
       }
     });
 
-    // Salvar carteira
     document.getElementById('btnSave')?.addEventListener('click', async ()=>{
       try{
-        await apiGetMe(); // garante que está logado (token válido)
+        if (!ensureTokenOrRedirect()) return;
+
         const wallet = document.getElementById('walletInput').value.trim();
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (começa com 0x...).');
 
@@ -337,10 +308,10 @@
       }
     });
 
-    // Verificar saldos
     document.getElementById('btnCheck')?.addEventListener('click', async ()=>{
       try{
-        await apiGetMe();
+        if (!ensureTokenOrRedirect()) return;
+
         const p = await apiParams();
         await refreshNetBadge();
 
@@ -359,10 +330,9 @@
       }
     });
 
-    // Ativar assinatura
     document.getElementById('btnSubscribe')?.addEventListener('click', async ()=>{
       try{
-        await apiGetMe();
+        if (!ensureTokenOrRedirect()) return;
 
         if (!window.ethereum){
           toast('MetaMask não detectado. No celular, use "Abrir no MetaMask".', 'error');
@@ -394,12 +364,7 @@
         const me = await apiGetMe();
         setStatusUI(me);
       }catch(err){
-        const m = (err?.message || '').toLowerCase();
-        if (m.includes('rejeit') || m.includes('rejected') || m.includes('denied')){
-          toast('Você cancelou no MetaMask. Tente novamente e confirme as telas.', 'error');
-        } else {
-          toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
-        }
+        toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
       }
     });
   </script>
