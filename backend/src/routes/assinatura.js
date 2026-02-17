@@ -10,7 +10,7 @@ import { getSubscriptionContract, getErc20, getWeb3State } from "../services/web
 const router = Router();
 
 const SubscribeSchema = z.object({
-  walletAddress: z.string().min(10),
+  walletAddress: z.string().min(10).optional().nullable(),
   referrerCode: z.string().min(3).max(40).optional().nullable(),
 });
 
@@ -75,20 +75,29 @@ router.post("/subscribe", requireAuth, async (req, res) => {
 
   const userId = req.user._id.toString();
 
+  // 1) resolve wallet (body -> ou salva do usuário)
+  let userWalletRaw = (parsed.data.walletAddress || "").trim();
+  if (!userWalletRaw) userWalletRaw = (req.user.walletAddress || "").trim();
+
+  if (!userWalletRaw) {
+    return res.status(400).json({ error: "SALVE_SUA_CARTEIRA" });
+  }
+
   let userWallet;
   try {
-    userWallet = ethers.getAddress(parsed.data.walletAddress);
+    userWallet = ethers.getAddress(userWalletRaw);
   } catch {
     return res.status(400).json({ error: "Wallet inválida" });
   }
 
-  // salva wallet do usuário (se já existir, só mantém)
+  // garante wallet salva
   await User.updateOne({ _id: userId }, { $set: { walletAddress: userWallet } });
 
   // referrer on-chain (se existir no sistema e tiver wallet)
   let directReferrerWallet = ethers.ZeroAddress;
-  if (parsed.data.referrerCode) {
-    const refUser = await User.findOne({ affiliateCode: parsed.data.referrerCode }).lean();
+  const refCode = parsed.data.referrerCode || req.user.referrerCode || null;
+  if (refCode) {
+    const refUser = await User.findOne({ affiliateCode: refCode }).lean();
     if (refUser?.walletAddress) {
       try {
         directReferrerWallet = ethers.getAddress(refUser.walletAddress);
@@ -101,9 +110,8 @@ router.post("/subscribe", requireAuth, async (req, res) => {
   try {
     const c = await getSubscriptionContract();
 
-    // valida allowance mínima antes de gastar gas
     const tokenAddress = await c.token();
-    const erc20 = await getErc20(tokenAddress); // provider read-only
+    const erc20 = await getErc20(tokenAddress);
 
     const [priceRaw, txFeeBpsRaw] = await Promise.all([c.price(), c.txFeeBps()]);
     const price = BigInt(priceRaw.toString());
@@ -115,11 +123,31 @@ router.post("/subscribe", requireAuth, async (req, res) => {
     const allowance = await erc20.allowance(userWallet, c.target);
     const allow = BigInt(allowance.toString());
 
+    // 2) se precisar approve: devolve tx para o MetaMask (SEM 400)
     if (allow < total) {
-      return res.status(400).json({ error: "APPROVE_REQUIRED" });
+      // ✅ limite de gastos: aprova apenas o necessário (reduz risco/alertas)
+      const approveAmount = total;
+
+      const iface = new ethers.Interface([
+        "function approve(address spender,uint256 value) returns (bool)",
+      ]);
+      const data = iface.encodeFunctionData("approve", [c.target, approveAmount]);
+
+      return res.json({
+        ok: true,
+        action: "approve",
+        message: "Aprovação necessária. Confirme no MetaMask e depois clique novamente em Ativar assinatura.",
+        txs: [
+          {
+            to: tokenAddress,
+            data,
+            value: "0x0",
+          },
+        ],
+      });
     }
 
-    // chama subscribe gasless
+    // 3) allowance ok => backend executa subscribe gasless
     const tx = await c.subscribe(userWallet, directReferrerWallet);
     const receipt = await tx.wait();
 
@@ -143,6 +171,7 @@ router.post("/subscribe", requireAuth, async (req, res) => {
 
     return res.json({
       ok: true,
+      action: "subscribed",
       txHash: receipt?.hash || tx?.hash,
       subscription: {
         plan: "mensal",
