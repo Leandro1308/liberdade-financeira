@@ -34,11 +34,9 @@ function migrateLegacyToken() {
   } catch {}
 }
 
-// Pega token de várias formas possíveis sem depender do backend exato
 function extractTokenFromResponse(data) {
   if (!data) return null;
 
-  // formatos comuns
   const candidates = [
     data.token,
     data.accessToken,
@@ -53,13 +51,11 @@ function extractTokenFromResponse(data) {
     if (c && String(c).trim()) return String(c).trim();
   }
 
-  // às vezes vem como string pura
   if (typeof data === "string" && data.trim()) return data.trim();
-
   return null;
 }
 
-// Faz /api/me com fetch direto para captar status real (não deslogar por rede)
+// Faz /api/me com fetch direto para captar status real (não deslogar por erro de rede)
 async function safeMeCheck() {
   const t = getToken();
   if (!t) return { ok: false, status: 401, data: null };
@@ -92,27 +88,19 @@ export async function login(email, password) {
 
   if (!e || !p) throw new Error("Informe e-mail e senha.");
 
-  // chama seu backend
   const data = await api("/api/auth/login", {
     method: "POST",
     body: { email: e, password: p },
   });
 
   const token = extractTokenFromResponse(data);
-  if (!token) {
-    // se backend retornar algo diferente, mostramos erro amigável
-    throw new Error("Login OK, mas o servidor não retornou token.");
-  }
+  if (!token) throw new Error("Login OK, mas o servidor não retornou token.");
 
   setToken(token);
-
-  // opcional: manter token nos links internos após login
   addTokenToLinks();
-
   return data;
 }
 
-// (Opcional) Logout, se você quiser usar depois
 export function logout({ redirect = true } = {}) {
   try { setToken(null); } catch {}
   if (redirect) location.href = "/login.html";
