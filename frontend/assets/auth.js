@@ -1,120 +1,71 @@
 // frontend/assets/auth.js
 import { api, getToken, setToken } from "/assets/api.js";
 
-// ===============================
-// Util: páginas públicas (não forçar auth guard)
-// ===============================
-function isPublicPage() {
-  const p = location.pathname || "/";
-  // páginas que DEVEM abrir sem estar logado
-  if (p === "/" || p.endsWith("/index.html")) return true;
-  if (p.endsWith("/login.html")) return true;
-  if (p.endsWith("/criar-conta.html")) return true;
-  if (p.endsWith("/cadastro.html")) return true;
-  // assinatura pode abrir mesmo sem login (mas botões exigem login)
-  if (p.endsWith("/assinatura.html")) return true;
-  return false;
+function isAuthPage() {
+  const p = location.pathname;
+  return p.endsWith("/login.html") || p.endsWith("/criar-conta.html");
 }
 
-// páginas de dashboard (precisa estar logado + assinatura ativa)
-function isDashboardPage() {
-  const p = location.pathname || "";
-  return p.includes("/dashboard");
-}
-
-// evita poluir links públicos com token
 function addTokenToLinks() {
   const t = getToken();
   if (!t) return;
 
+  // adiciona token só em links internos (mesmo domínio)
   document.querySelectorAll('a[href^="/"]').forEach((a) => {
     try {
-      const href = a.getAttribute("href") || "";
-      // não colocar token em páginas públicas sensíveis
-      if (
-        href.startsWith("/login.html") ||
-        href.startsWith("/criar-conta.html") ||
-        href.startsWith("/cadastro.html") ||
-        href.startsWith("/index.html") ||
-        href === "/"
-      ) return;
-
-      const u = new URL(href, location.origin);
+      const u = new URL(a.getAttribute("href"), location.origin);
+      // não poluir se já tem
       if (!u.searchParams.get("t")) u.searchParams.set("t", t);
       a.setAttribute("href", u.pathname + u.search + u.hash);
     } catch {}
   });
 }
 
-// ===============================
-// Login / Logout
-// ===============================
-export async function login(email, password) {
-  const data = await api("/api/auth/login", {
-    method: "POST",
-    body: { email, password }
-  });
+export async function ensureLoggedIn({
+  redirectToLogin = true,
+  requireActive = false,
+  redirectToAssinatura = true,
+} = {}) {
+  // ✅ evita loop infinito: não forçar auth dentro do login/criar-conta
+  if (isAuthPage()) return null;
 
-  if (data?.token) setToken(data.token);
-  // mantém links internos funcionando sem perder sessão
-  addTokenToLinks();
-  return data;
-}
-
-export function logout({ redirect = true } = {}) {
-  setToken(null);
-  if (redirect) location.href = "/login.html";
-}
-
-// ===============================
-// Guard: garante sessão e (opcional) assinatura ativa
-// ===============================
-export async function ensureLoggedIn({ redirectToLogin = true } = {}) {
   const token = getToken();
 
-  // se não tem token, não tenta (e não entra em loop em páginas públicas)
+  // sem token: redireciona
   if (!token) {
-    if (redirectToLogin && !isPublicPage()) location.href = "/login.html";
+    if (redirectToLogin) {
+      const next = encodeURIComponent(location.pathname + location.search);
+      location.href = `/login.html?next=${next}`;
+    }
     return null;
   }
 
   try {
     const me = await api("/api/me");
     addTokenToLinks();
+
+    // ✅ se quiser exigir assinatura ativa em páginas do painel
+    const sub = me?.user?.subscription || me?.subscription || null;
+    const status = sub?.status || "inactive";
+    if (requireActive && status !== "active") {
+      if (redirectToAssinatura) {
+        location.href = "/assinatura.html";
+      }
+      return me;
+    }
+
     return me;
   } catch (e) {
     // token inválido/expirado
     setToken(null);
-    if (redirectToLogin && !isPublicPage()) location.href = "/login.html";
+    if (redirectToLogin) {
+      const next = encodeURIComponent(location.pathname + location.search);
+      location.href = `/login.html?next=${next}`;
+    }
     return null;
   }
 }
 
-// ===============================
-// Guard extra: dashboard exige assinatura ativa
-// ===============================
-async function guardDashboard() {
-  // só protege dashboard
-  if (!isDashboardPage()) return;
-
-  const me = await ensureLoggedIn({ redirectToLogin: true });
-  if (!me) return;
-
-  const status = me?.user?.subscription?.status || "inactive";
-
-  // se não está ativo, manda pra assinatura antes
-  if (status !== "active") {
-    location.href = "/assinatura.html";
-  }
-}
-
-// ===============================
-// Auto-run seguro (SEM LOOP)
-// - NÃO roda em páginas públicas (ex: login)
-// - roda em dashboards automaticamente
-// ===============================
-(function autoRun() {
-  if (isPublicPage()) return;
-  // só roda guard do dashboard quando for dashboard
-  guardDashboard().catch(() => {});
-})();
+// ✅ roda automaticamente em páginas que incluem auth.js
+// (mas não roda no login/criar-conta por causa do isAuthPage())
+ensureLoggedIn().catch(() => {});
