@@ -234,8 +234,18 @@
     }
 
     async function apiSubscribe(){
-      return api('/api/assinatura/subscribe', { method:'POST', body:{} });
+  // tenta pegar do input (mais confiável)
+  const wallet = (document.getElementById('walletInput')?.value || '').trim();
+
+  // manda walletAddress e wallet (compatível com qualquer backend)
+  return api('/api/assinatura/subscribe', {
+    method:'POST',
+    body:{
+      walletAddress: wallet,
+      wallet: wallet
     }
+  });
+}
 
     async function sendTx(tx){
       return ethereum.request({ method:'eth_sendTransaction', params:[tx] });
