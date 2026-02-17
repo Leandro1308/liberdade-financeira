@@ -51,12 +51,16 @@ export function getToken() {
 captureTokenOnce();
 
 export async function api(path, { method = "GET", token = null, body = null } = {}) {
-  const headers = { "Content-Type": "application/json" };
+  const headers = {};
+
+  // ✅ Só define Content-Type quando existe body
+  const hasBody = body !== null && body !== undefined && method !== "GET" && method !== "HEAD";
+  if (hasBody) headers["Content-Type"] = "application/json";
 
   const autoToken = token || getStoredToken();
   if (autoToken) headers.Authorization = `Bearer ${autoToken}`;
 
-  // ✅ anti-cache em GET (evita pegar resposta cacheada)
+  // ✅ anti-cache em GET
   const url = new URL(`${API_BASE}${path}`);
   if (method === "GET") url.searchParams.set("_t", Date.now().toString());
 
@@ -64,7 +68,8 @@ export async function api(path, { method = "GET", token = null, body = null } = 
     method,
     headers,
     credentials: "include",
-    body: body ? JSON.stringify(body) : null
+    // ✅ nunca enviar body em GET/HEAD
+    body: hasBody ? JSON.stringify(body) : undefined
   });
 
   const contentType = res.headers.get("content-type") || "";
