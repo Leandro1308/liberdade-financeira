@@ -158,3 +158,30 @@ a:hover{opacity:.9;text-decoration:underline}
   .layout{grid-template-columns: 1fr}
   .sidebar{border-right:none; border-bottom:1px solid var(--line)}
 }
+
+/* ==========================================================
+   ✅ FIX: Toast/Notificações SEMPRE na frente (mobile e desktop)
+   - Evita ficar atrás de cards/textos por stacking context
+   - Não quebra nada do layout atual
+   ========================================================== */
+.toast{
+  position: fixed !important;
+  z-index: 999999 !important;
+
+  /* mantém embaixo e visível */
+  bottom: 18px !important;
+
+  /* centraliza melhor no celular e continua ok no desktop */
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+
+  /* evita que o toast “trave” clique no fundo quando exibido */
+  pointer-events: none !important;
+}
+.toast .msg{
+  pointer-events: auto !important;
+}
+
+/* segurança extra: evita “corte” horizontal */
+body{ overflow-x: hidden; }
