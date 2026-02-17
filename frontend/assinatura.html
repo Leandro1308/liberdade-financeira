@@ -128,7 +128,7 @@
 
   <script>
     // ===============================
-    // Helpers UI (fallback caso ui.js não tenha)
+    // Toast fallback
     // ===============================
     function toast(msg, type){
       const el = document.getElementById('toast');
@@ -138,15 +138,69 @@
       setTimeout(()=>{ el.className='toast'; }, 4500);
     }
 
-    function isMobile(){
-      return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // ===============================
+    // ✅ AUTH: token via ?t=... (query) + localStorage + Authorization header
+    // ===============================
+    const TOKEN_KEY = 'lf_token';
+
+    function getTokenFromUrl(){
+      try{
+        const u = new URL(location.href);
+        const t = u.searchParams.get('t');
+        return t && String(t).trim() ? String(t).trim() : null;
+      }catch(e){
+        return null;
+      }
     }
 
-    // Deep link para abrir no navegador interno do MetaMask (melhor no iOS)
+    function saveToken(token){
+      try{ localStorage.setItem(TOKEN_KEY, token); }catch(e){}
+    }
+
+    function getToken(){
+      const tUrl = getTokenFromUrl();
+      if (tUrl) return tUrl;
+      try{
+        const t = localStorage.getItem(TOKEN_KEY);
+        return t && String(t).trim() ? String(t).trim() : null;
+      }catch(e){
+        return null;
+      }
+    }
+
+    function keepTokenInUrl(){
+      const token = getTokenFromUrl();
+      if (!token) return;
+      saveToken(token);
+      // remove ?t=... da URL para não ficar exposto (mantém navegação limpa)
+      try{
+        const u = new URL(location.href);
+        u.searchParams.delete('t');
+        history.replaceState({}, '', u.toString());
+      }catch(e){}
+    }
+
+    async function apiFetch(path, opts){
+      const token = getToken();
+      const headers = Object.assign({}, (opts && opts.headers) || {});
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+
+      const finalOpts = Object.assign({
+        credentials: 'include' // mantém cookie se existir, mas não depende dele
+      }, opts || {}, { headers });
+
+      return fetch(path, finalOpts);
+    }
+
+    // ===============================
+    // MetaMask deep link (mantendo token salvo)
+    // ===============================
     function getMetaMaskDappLink(){
-      const url = location.href;
-      // metamask.app.link/dapp/<host>/<path...>
-      const clean = url.replace(/^https?:\/\//, '');
+      const token = getToken(); // token do localStorage ou URL original
+      // Monta URL atual (sem expor token se já foi limpo) — mas se tiver token, adiciona ao link do MetaMask
+      const u = new URL(location.href);
+      if (token) u.searchParams.set('t', token);
+      const clean = u.toString().replace(/^https?:\/\//, '');
       return 'https://metamask.app.link/dapp/' + clean;
     }
 
@@ -164,9 +218,7 @@
 
     async function ensureBsc(){
       if (!window.ethereum) throw new Error('MetaMask não detectado.');
-
       try{
-        // já atualiza badge se possível
         const current = await ethereum.request({ method:'eth_chainId' });
         if (current === BSC_CHAIN_ID) return true;
 
@@ -174,10 +226,8 @@
           method:'wallet_switchEthereumChain',
           params:[{ chainId: BSC_CHAIN_ID }]
         });
-
         return true;
       }catch(err){
-        // 4902 = rede não adicionada
         if (err && err.code === 4902){
           await ethereum.request({
             method:'wallet_addEthereumChain',
@@ -206,50 +256,50 @@
     }
 
     // ===============================
-    // Integração com seu backend existente
-    // (não quebra: usa endpoints que já aparecem nos logs)
+    // API do seu backend
     // ===============================
     async function apiGetMe(){
-      const r = await fetch('/api/me', { credentials:'include' });
-      if (!r.ok) throw new Error('Não autenticado.');
+      const r = await apiFetch('/api/me', { method:'GET' });
+      if (!r.ok){
+        const data = await r.json().catch(()=> ({}));
+        throw new Error(data?.error || 'Não autenticado.');
+      }
       return r.json();
     }
 
     async function apiSaveWallet(wallet){
-      const r = await fetch('/api/me/wallet', {
+      const r = await apiFetch('/api/me/wallet', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        credentials:'include',
         body: JSON.stringify({ wallet })
       });
       if (!r.ok){
-        const t = await r.text().catch(()=> '');
-        throw new Error(t || 'Falha ao salvar carteira.');
+        const data = await r.json().catch(async ()=> ({ error: await r.text().catch(()=> '') }));
+        throw new Error(data?.error || 'Falha ao salvar carteira.');
       }
       return r.json().catch(()=> ({}));
     }
 
     async function apiParams(){
-      const r = await fetch('/api/assinatura/params', { credentials:'include' });
-      if (!r.ok) throw new Error('Falha ao carregar parâmetros.');
+      const r = await apiFetch('/api/assinatura/params', { method:'GET' });
+      if (!r.ok){
+        const data = await r.json().catch(()=> ({}));
+        throw new Error(data?.error || 'Falha ao carregar parâmetros.');
+      }
       return r.json();
     }
 
     async function apiSubscribe(){
-      const r = await fetch('/api/assinatura/subscribe', {
+      const r = await apiFetch('/api/assinatura/subscribe', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        credentials:'include',
         body: JSON.stringify({})
       });
       const data = await r.json().catch(()=> ({}));
-      if (!r.ok){
-        throw new Error(data?.error || 'Falha ao iniciar assinatura.');
-      }
+      if (!r.ok) throw new Error(data?.error || 'Falha ao iniciar assinatura.');
       return data;
     }
 
-    // Envia tx no formato { from, to, data, value } (hex strings)
     async function sendTx(tx){
       return ethereum.request({ method:'eth_sendTransaction', params:[tx] });
     }
@@ -264,16 +314,18 @@
       const du = document.getElementById('accDue');
       if (!st || !au || !du) return;
 
-      // Ajuste conforme seu backend retorna
       st.textContent = me?.assinatura?.status || me?.status || 'inactive';
       au.textContent = (me?.assinatura?.autoRenew ?? me?.autoRenew) ? 'SIM' : 'NÃO';
       du.textContent = me?.assinatura?.vencimento || me?.dueDate || '-';
     }
 
     // ===============================
-    // Eventos
+    // Init
     // ===============================
     (async function init(){
+      // ✅ captura ?t=... e salva (e remove da URL)
+      keepTokenInUrl();
+
       document.getElementById('btnOpenMM').addEventListener('click', ()=>{
         location.href = getMetaMaskDappLink();
       });
@@ -282,13 +334,13 @@
 
       if (window.ethereum){
         ethereum.on?.('chainChanged', ()=>{ refreshNetBadge(); });
-        ethereum.on?.('accountsChanged', ()=>{ /* opcional */ });
       }
 
       // carrega status
       try{
         const me = await apiGetMe();
         setStatusUI(me);
+
         if (me?.wallet && isValidAddress(me.wallet)){
           document.getElementById('walletInput').value = me.wallet;
           const info = document.getElementById('savedInfo');
@@ -296,7 +348,8 @@
           info.innerHTML = 'Carteira salva: <b>' + me.wallet + '</b>';
         }
       }catch(e){
-        // ignora aqui (usuário pode estar antes do login)
+        // Se não autenticou, mostra claramente (isso é o que estava te travando)
+        toast(e?.message || 'Faça login para continuar.', 'error');
       }
     })();
 
@@ -307,14 +360,10 @@
           toast('MetaMask não detectado. No celular, use "Abrir no MetaMask".', 'error');
           return;
         }
-
-        // ✅ força BNB Chain antes de conectar
         await ensureBsc();
-
         const accounts = await ethereum.request({ method:'eth_requestAccounts' });
         const acc = accounts?.[0];
         if (!acc) throw new Error('Nenhuma conta selecionada.');
-
         document.getElementById('walletInput').value = acc;
         toast('Carteira conectada: ' + acc.slice(0,6) + '...' + acc.slice(-4));
         await refreshNetBadge();
@@ -341,14 +390,12 @@
       }
     });
 
-    // Verificar saldos (mantém seu backend; se retornar 0 e o usuário tiver saldo em outra rede, é normal)
+    // Verificar saldos
     document.getElementById('btnCheck').addEventListener('click', async ()=>{
       try{
-        const p = await apiParams(); // você já tem esse endpoint nos logs
-        // esperamos que params venha com saldos ou outro endpoint; se não vier, só informamos a rede
+        const p = await apiParams();
         await refreshNetBadge();
 
-        // Se seu /api/assinatura/params já retorna balances, preenche aqui:
         const bnb = p?.balances?.bnb ?? p?.bnb ?? null;
         const usdt = p?.balances?.usdt ?? p?.usdt ?? null;
 
@@ -357,7 +404,7 @@
           if (bnb != null) document.getElementById('balBNB').textContent = bnb;
           if (usdt != null) document.getElementById('balUSDT').textContent = usdt;
         } else {
-          toast('Saldos: verificação disponível após conectar na BNB Chain.', 'error');
+          toast('Saldos: verificação disponível após autenticar e conectar na BNB Chain.', 'error');
         }
       }catch(err){
         toast(err?.message || 'Falha ao verificar saldos.', 'error');
@@ -367,19 +414,19 @@
     // Ativar assinatura
     document.getElementById('btnSubscribe').addEventListener('click', async ()=>{
       try{
+        // ✅ primeiro: precisa estar autenticado
+        await apiGetMe();
+
         if (!window.ethereum){
           toast('MetaMask não detectado. No celular, use "Abrir no MetaMask".', 'error');
           return;
         }
 
-        // ✅ GARANTIA: sempre em BNB Chain antes de iniciar a assinatura
         await ensureBsc();
         await refreshNetBadge();
 
-        // backend inicia e pode retornar transações necessárias (approve + cobrança)
         const flow = await apiSubscribe();
 
-        // ✅ Tentativa 1: backend retorna txs em sequência
         if (Array.isArray(flow?.txs) && flow.txs.length){
           const accounts = await ethereum.request({ method:'eth_requestAccounts' });
           const from = accounts?.[0];
@@ -392,22 +439,21 @@
             await sendTx(tx);
           }
 
-          toast('Transações enviadas. Aguarde a confirmação no MetaMask.');
+          toast('Transações enviadas. Confirme no MetaMask e aguarde a rede.');
         } else {
-          // ✅ fallback: se backend não retorna txs, apenas orienta
-          toast('Confirme a autorização no MetaMask (BNB Chain) e tente novamente.');
+          toast('Fluxo iniciado. Confirme as telas no MetaMask.', 'success');
         }
 
-        // Recarrega status
         const me = await apiGetMe();
         setStatusUI(me);
 
       }catch(err){
-        // Mensagem mais humana para o caso mais comum:
         const m = (err?.message || '').toLowerCase();
-        if (m.includes('user rejected') || m.includes('rejeit') || m.includes('denied')){
+        if (m.includes('não autenticado') || m.includes('faça login')){
+          toast('Você precisa estar logado para assinar. Volte ao login e tente novamente.', 'error');
+        } else if (m.includes('user rejected') || m.includes('rejeit') || m.includes('denied')){
           toast('Você cancelou no MetaMask. Tente novamente e confirme as telas.', 'error');
-        } else if (m.includes('ethereum') && m.includes('chain')){
+        } else if (m.includes('chain')){
           toast('Troque para BNB Chain no MetaMask e tente novamente.', 'error');
         } else {
           toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
