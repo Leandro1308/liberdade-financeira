@@ -48,19 +48,36 @@
     import { login } from "/assets/auth.js";
     import { toast } from "/assets/ui.js";
 
-    // Se veio ref no link, guarda para criar conta depois (opcional)
     const url = new URL(location.href);
+
+    // Se veio ref no link, guarda para criar conta depois (opcional)
     const ref = url.searchParams.get("ref");
     if (ref) localStorage.setItem("LF_REF", ref);
+
+    // ✅ Se veio next, voltar para a página original após login
+    const next = url.searchParams.get("next");
 
     document.getElementById("form").addEventListener("submit", async (e) => {
       e.preventDefault();
       try{
         const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value;
+
         await login(email, password);
-        toast("Login OK. Indo para o dashboard…");
-        setTimeout(()=> location.href="/dashboard.html", 600);
+
+        toast("Login OK. Entrando…");
+
+        setTimeout(()=> {
+          if (next && String(next).trim()) {
+            try {
+              // next já vem encodeURIComponent do auth.js
+              location.href = decodeURIComponent(next);
+              return;
+            } catch {}
+          }
+          location.href = "/dashboard.html";
+        }, 600);
+
       }catch(err){
         toast(err.message || "Falha no login", "error");
       }
