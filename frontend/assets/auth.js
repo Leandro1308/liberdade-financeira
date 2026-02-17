@@ -2,178 +2,119 @@
 import { api, getToken, setToken } from "/assets/api.js";
 
 // ===============================
-// Helpers
+// Util: páginas públicas (não forçar auth guard)
 // ===============================
+function isPublicPage() {
+  const p = location.pathname || "/";
+  // páginas que DEVEM abrir sem estar logado
+  if (p === "/" || p.endsWith("/index.html")) return true;
+  if (p.endsWith("/login.html")) return true;
+  if (p.endsWith("/criar-conta.html")) return true;
+  if (p.endsWith("/cadastro.html")) return true;
+  // assinatura pode abrir mesmo sem login (mas botões exigem login)
+  if (p.endsWith("/assinatura.html")) return true;
+  return false;
+}
+
+// páginas de dashboard (precisa estar logado + assinatura ativa)
+function isDashboardPage() {
+  const p = location.pathname || "";
+  return p.includes("/dashboard");
+}
+
+// evita poluir links públicos com token
 function addTokenToLinks() {
   const t = getToken();
   if (!t) return;
 
   document.querySelectorAll('a[href^="/"]').forEach((a) => {
     try {
-      const u = new URL(a.getAttribute("href"), location.origin);
+      const href = a.getAttribute("href") || "";
+      // não colocar token em páginas públicas sensíveis
+      if (
+        href.startsWith("/login.html") ||
+        href.startsWith("/criar-conta.html") ||
+        href.startsWith("/cadastro.html") ||
+        href.startsWith("/index.html") ||
+        href === "/"
+      ) return;
+
+      const u = new URL(href, location.origin);
       if (!u.searchParams.get("t")) u.searchParams.set("t", t);
       a.setAttribute("href", u.pathname + u.search + u.hash);
     } catch {}
   });
 }
 
-// 🔁 Migração: se existir token salvo em chaves antigas, reaproveita
-function migrateLegacyToken() {
-  try {
-    const current = getToken();
-    if (current) return;
-
-    const legacyKeys = ["token", "jwt", "auth_token", "lfToken", "lf.jwt"];
-    for (const k of legacyKeys) {
-      const v = localStorage.getItem(k);
-      if (v && String(v).trim()) {
-        setToken(String(v).trim());
-        return;
-      }
-    }
-  } catch {}
-}
-
-function extractTokenFromResponse(data) {
-  if (!data) return null;
-
-  const candidates = [
-    data.token,
-    data.accessToken,
-    data.jwt,
-    data.bearer,
-    data?.data?.token,
-    data?.data?.accessToken,
-    data?.data?.jwt,
-  ];
-
-  for (const c of candidates) {
-    if (c && String(c).trim()) return String(c).trim();
-  }
-
-  if (typeof data === "string" && data.trim()) return data.trim();
-  return null;
-}
-
-// Faz /api/me com fetch direto para captar status real (não deslogar por erro de rede)
-async function safeMeCheck() {
-  const t = getToken();
-  if (!t) return { ok: false, status: 401, data: null };
-
-  try {
-    const res = await fetch(`${location.origin}/api/me?_t=${Date.now()}`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${t}` },
-      credentials: "include",
-    });
-
-    const contentType = res.headers.get("content-type") || "";
-    const data = contentType.includes("application/json")
-      ? await res.json().catch(() => ({}))
-      : await res.text().catch(() => "");
-
-    return { ok: res.ok, status: res.status, data };
-  } catch {
-    // erro de rede -> não limpar token
-    return { ok: false, status: 0, data: null };
-  }
-}
-
-function isPublicPage() {
-  // ✅ páginas que NÃO devem redirecionar
-  const p = (location.pathname || "/").toLowerCase();
-
-  // home (/) e páginas públicas
-  const publicPaths = [
-    "/",
-    "/index.html",
-    "/login.html",
-    "/criar-conta.html",
-    "/cadastro.html",
-  ];
-
-  return publicPaths.includes(p);
-}
-
 // ===============================
-// Login (usado em login.html)
+// Login / Logout
 // ===============================
 export async function login(email, password) {
-  const e = String(email || "").trim();
-  const p = String(password || "");
-
-  if (!e || !p) throw new Error("Informe e-mail e senha.");
-
   const data = await api("/api/auth/login", {
     method: "POST",
-    body: { email: e, password: p },
+    body: { email, password }
   });
 
-  const token = extractTokenFromResponse(data);
-  if (!token) throw new Error("Login OK, mas o servidor não retornou token.");
-
-  setToken(token);
+  if (data?.token) setToken(data.token);
+  // mantém links internos funcionando sem perder sessão
   addTokenToLinks();
   return data;
 }
 
 export function logout({ redirect = true } = {}) {
-  try { setToken(null); } catch {}
+  setToken(null);
   if (redirect) location.href = "/login.html";
 }
 
 // ===============================
-// Proteção de páginas privadas
+// Guard: garante sessão e (opcional) assinatura ativa
 // ===============================
 export async function ensureLoggedIn({ redirectToLogin = true } = {}) {
-  migrateLegacyToken();
-
-  // ✅ Se for página pública, não faz redirect automático (evita loop)
-  if (isPublicPage()) {
-    // se tiver token, só melhora links
-    addTokenToLinks();
-    return null;
-  }
-
   const token = getToken();
+
+  // se não tem token, não tenta (e não entra em loop em páginas públicas)
   if (!token) {
-    if (redirectToLogin) {
-      const next = encodeURIComponent(location.pathname + location.search + location.hash);
-      location.href = `/login.html?next=${next}`;
-    }
+    if (redirectToLogin && !isPublicPage()) location.href = "/login.html";
     return null;
   }
 
-  const check = await safeMeCheck();
-
-  if (check.ok) {
-    addTokenToLinks();
-    return check.data;
-  }
-
-  // só limpa token se o servidor realmente rejeitou
-  if (check.status === 401 || check.status === 403) {
-    setToken(null);
-    if (redirectToLogin) {
-      const next = encodeURIComponent(location.pathname + location.search + location.hash);
-      location.href = `/login.html?next=${next}`;
-    }
-    return null;
-  }
-
-  // erro de rede / 5xx -> não desloga; tenta fallback via api()
   try {
     const me = await api("/api/me");
     addTokenToLinks();
     return me;
-  } catch {
-    if (redirectToLogin) {
-      const next = encodeURIComponent(location.pathname + location.search + location.hash);
-      location.href = `/login.html?next=${next}`;
-    }
+  } catch (e) {
+    // token inválido/expirado
+    setToken(null);
+    if (redirectToLogin && !isPublicPage()) location.href = "/login.html";
     return null;
   }
 }
 
-// ✅ roda automaticamente SOMENTE em páginas que não são públicas
-ensureLoggedIn().catch(() => {});
+// ===============================
+// Guard extra: dashboard exige assinatura ativa
+// ===============================
+async function guardDashboard() {
+  // só protege dashboard
+  if (!isDashboardPage()) return;
+
+  const me = await ensureLoggedIn({ redirectToLogin: true });
+  if (!me) return;
+
+  const status = me?.user?.subscription?.status || "inactive";
+
+  // se não está ativo, manda pra assinatura antes
+  if (status !== "active") {
+    location.href = "/assinatura.html";
+  }
+}
+
+// ===============================
+// Auto-run seguro (SEM LOOP)
+// - NÃO roda em páginas públicas (ex: login)
+// - roda em dashboards automaticamente
+// ===============================
+(function autoRun() {
+  if (isPublicPage()) return;
+  // só roda guard do dashboard quando for dashboard
+  guardDashboard().catch(() => {});
+})();
