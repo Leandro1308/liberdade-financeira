@@ -219,21 +219,40 @@
       const du = document.getElementById('accDue');
       if (!st || !au || !du) return;
 
+      // backend atual: user.subscription.{status, renovacaoAutomatica, currentPeriodEnd}
       st.textContent = me?.subscription?.status || me?.assinatura?.status || me?.status || 'inactive';
+
       const auto = me?.subscription?.renovacaoAutomatica ?? me?.assinatura?.autoRenew ?? me?.autoRenew;
       au.textContent = auto ? 'SIM' : 'NÃO';
+
       du.textContent = me?.subscription?.currentPeriodEnd || me?.assinatura?.vencimento || me?.dueDate || '-';
     }
 
     // ===============================
-    // API wrappers (agora com token automático via api.js)
+    // Normalização do /api/me
+    // ✅ compatível com:
+    // - { user: {...} }  (seu backend atual)
+    // - {...}            (caso exista algum fluxo antigo)
     // ===============================
-    async function apiGetMe(){
-      return api('/api/me');
+    function normalizeMe(payload){
+      if (!payload) return null;
+      if (payload.user && typeof payload.user === "object") return payload.user;
+      return payload; // fallback
     }
 
-    async function apiSaveWallet(wallet){
-      return api('/api/me/wallet', { method:'POST', body:{ wallet } });
+    // ===============================
+    // API wrappers (token automático via api.js)
+    // ===============================
+    async function apiGetMe(){
+      const raw = await api('/api/me');
+      const me = normalizeMe(raw);
+      if (!me) throw new Error("Não autenticado.");
+      return me;
+    }
+
+    async function apiSaveWallet(walletAddress){
+      // ✅ backend exige { walletAddress }
+      return api('/api/me/wallet', { method:'POST', body:{ walletAddress } });
     }
 
     async function apiParams(){
@@ -266,7 +285,9 @@
         const me = await apiGetMe();
         setStatusUI(me);
 
-        const saved = me?.walletAddress || me?.wallet;
+        // ✅ backend atual: walletAddress
+        const saved = me?.walletAddress || me?.wallet || null;
+
         if (saved && isValidAddress(saved)){
           document.getElementById('walletInput').value = saved;
           const info = document.getElementById('savedInfo');
@@ -274,7 +295,6 @@
           info.innerHTML = 'Carteira salva: <b>' + saved + '</b>';
         }
       }catch(e){
-        // aqui agora só dá erro se realmente não houver token válido
         toast(e?.message || 'Não autenticado.', 'error');
       }
     })();
@@ -298,10 +318,10 @@
       }
     });
 
-    // Salvar carteira (AGORA autenticado via Bearer)
+    // Salvar carteira
     document.getElementById('btnSave')?.addEventListener('click', async ()=>{
       try{
-        await apiGetMe(); // garante que está logado
+        await apiGetMe(); // garante que está logado (token válido)
         const wallet = document.getElementById('walletInput').value.trim();
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (começa com 0x...).');
 
@@ -368,13 +388,18 @@
 
           toast('Transações enviadas. Confirme no MetaMask e aguarde a rede.');
         } else {
-          toast('Confirme as telas no MetaMask para concluir.', 'success');
+          toast('Confirme as telas no MetaMask para concluir.');
         }
 
         const me = await apiGetMe();
         setStatusUI(me);
       }catch(err){
-        toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
+        const m = (err?.message || '').toLowerCase();
+        if (m.includes('rejeit') || m.includes('rejected') || m.includes('denied')){
+          toast('Você cancelou no MetaMask. Tente novamente e confirme as telas.', 'error');
+        } else {
+          toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
+        }
       }
     });
   </script>
