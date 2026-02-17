@@ -47,15 +47,27 @@
   <script type="module">
     import { login } from "/assets/auth.js";
     import { toast } from "/assets/ui.js";
-
-    const url = new URL(location.href);
+    import { api } from "/assets/api.js";
 
     // Se veio ref no link, guarda para criar conta depois (opcional)
+    const url = new URL(location.href);
     const ref = url.searchParams.get("ref");
     if (ref) localStorage.setItem("LF_REF", ref);
 
-    // ✅ Se veio next, voltar para a página original após login
-    const next = url.searchParams.get("next");
+    async function routeAfterLogin() {
+      // Busca dados do usuário logado
+      const me = await api("/api/me");
+      const sub = me?.user?.subscription;
+
+      // ✅ Se não está ativa, força passar pela assinatura (MetaMask)
+      if (!sub || sub.status !== "active") {
+        location.href = "/assinatura.html";
+        return;
+      }
+
+      // ✅ Se está ativa, vai pro painel
+      location.href = "/dashboard.html";
+    }
 
     document.getElementById("form").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -65,19 +77,16 @@
 
         await login(email, password);
 
-        toast("Login OK. Entrando…");
-
-        setTimeout(()=> {
-          if (next && String(next).trim()) {
-            try {
-              // next já vem encodeURIComponent do auth.js
-              location.href = decodeURIComponent(next);
-              return;
-            } catch {}
+        toast("Login OK. Verificando assinatura…");
+        setTimeout(async ()=>{
+          try{
+            await routeAfterLogin();
+          } catch (err) {
+            // Se por algum motivo /api/me falhar, manda para assinatura (mais seguro)
+            toast(err?.message || "Falha ao verificar assinatura", "error");
+            setTimeout(()=> location.href="/assinatura.html", 600);
           }
-          location.href = "/dashboard.html";
-        }, 600);
-
+        }, 300);
       }catch(err){
         toast(err.message || "Falha no login", "error");
       }
