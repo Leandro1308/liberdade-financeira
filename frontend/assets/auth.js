@@ -22,8 +22,9 @@ function addTokenToLinks() {
 
 /**
  * ✅ Criar conta
- * Backend real: POST /api/auth/register
- * Backend espera: { name, email, password, ref }
+ * Backend: POST /api/auth/register
+ * Body: { name, email, password, ref }
+ * Retorna: { token, user }
  */
 export async function register(name, email, password, ref = null) {
   const payload = {
@@ -46,7 +47,9 @@ export async function register(name, email, password, ref = null) {
 
 /**
  * ✅ Login
- * Backend real: POST /api/auth/login
+ * Backend: POST /api/auth/login
+ * Body: { email, password }
+ * Retorna: { token, user }
  */
 export async function login(email, password) {
   const payload = { email, password };
@@ -67,19 +70,19 @@ export function logout() {
 }
 
 /**
- * ✅ Mantido: ensureLoggedIn
+ * ✅ Guard
+ * Usa /api/me (que você já tem no backend)
  */
 export async function ensureLoggedIn({
   redirectToLogin = true,
   requireActive = false,
   redirectToAssinatura = true,
 } = {}) {
-  // evita loop infinito no login/criar-conta
+  // evita loop no login/criar-conta
   if (isAuthPage()) return null;
 
   const token = getToken();
 
-  // sem token
   if (!token) {
     if (redirectToLogin) {
       const next = encodeURIComponent(location.pathname + location.search);
