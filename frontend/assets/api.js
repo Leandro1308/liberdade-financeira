@@ -18,7 +18,9 @@ function captureTokenOnce() {
   const t = getTokenFromUrl();
   if (!t) return;
 
-  try { localStorage.setItem(TOKEN_KEY, t); } catch {}
+  try {
+    localStorage.setItem(TOKEN_KEY, t);
+  } catch {}
 
   try {
     const u = new URL(location.href);
@@ -49,6 +51,12 @@ export function getToken() {
 
 captureTokenOnce();
 
+/**
+ * API base (compatível com o que já existe)
+ * - mantém Authorization Bearer
+ * - anti-cache em GET
+ * - não quebra nada do login atual
+ */
 export async function api(path, { method = "GET", token = null, body = null } = {}) {
   const headers = { "Content-Type": "application/json" };
 
@@ -63,7 +71,7 @@ export async function api(path, { method = "GET", token = null, body = null } = 
     method,
     headers,
     credentials: "include",
-    body: body ? JSON.stringify(body) : null
+    body: body ? JSON.stringify(body) : null,
   });
 
   const contentType = res.headers.get("content-type") || "";
@@ -72,8 +80,56 @@ export async function api(path, { method = "GET", token = null, body = null } = 
     : await res.text().catch(() => "");
 
   if (!res.ok) {
-    const msg = (data && data.error) ? data.error : "Erro na requisição";
-    throw new Error(msg);
+    // prioriza mensagem do backend (se vier)
+    const msg =
+      (data && typeof data === "object" && (data.message || data.error)) ||
+      (typeof data === "string" && data) ||
+      "Erro na requisição";
+    throw new Error(String(msg));
   }
+
   return data;
 }
+
+/* =========================================================
+   ✅ Helpers (opcionais) para assinatura on-chain (Opção A)
+   - Não interferem no restante do site
+   ========================================================= */
+
+export const assinaturaApi = {
+  // Mantém compatibilidade com o endpoint antigo
+  getParams() {
+    return api("/api/assinatura/params");
+  },
+
+  // Novo (alias “profissional”)
+  getContractInfo() {
+    return api("/api/assinatura/contract/info");
+  },
+
+  // Status “interno” (Mongo) — mantém seu fluxo atual
+  getMongoStatus() {
+    return api("/api/assinatura/status");
+  },
+
+  // Status on-chain (active/due/nextDueAt)
+  getOnchainStatus() {
+    return api("/api/assinatura/subscription/status");
+  },
+
+  // Prepara dados para o frontend executar approve + subscribe(referrer)
+  prepareSubscribe({ walletAddress = null, referrerCode = null } = {}) {
+    return api("/api/assinatura/subscribe", {
+      method: "POST",
+      body: { walletAddress, referrerCode },
+    });
+  },
+
+  // (Opcional) valida tx hash no backend
+  validateTx({ txHash, walletAddress = null } = {}) {
+    return api("/api/assinatura/subscription/validateTx", {
+      method: "POST",
+      body: { txHash, walletAddress },
+    });
+  },
+};
