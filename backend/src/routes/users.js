@@ -1,21 +1,25 @@
-// backend/src/routes/users.js
-const express = require("express");
-const { authRequired } = require("../middlewares/auth");
-const { readDB } = require("../lib/db");
+// backend/src/routes/users.js (ESM)
+import { Router } from "express";
+import { requireAuth } from "../middleware/auth.js";
 
-const router = express.Router();
+const router = Router();
 
-router.get("/me", authRequired, (req, res) => {
-  const db = readDB();
-  const user = db.users.find(u => u.id === req.user.id);
+/**
+ * Alias simples para dados do usuário logado.
+ * Mantém compatibilidade caso alguma tela chame /api/users/me
+ * Sem depender do db.json legado.
+ */
+router.get("/me", requireAuth, (req, res) => {
+  const u = req.user || {};
 
-  if (!user) return res.status(404).json({ error: "USER_NOT_FOUND" });
-
-  res.json({
-    id: user.id,
-    email: user.email,
-    createdAt: user.createdAt
+  return res.json({
+    ok: true,
+    user: {
+      id: u._id?.toString?.() || u.id || null,
+      email: u.email || null,
+      createdAt: u.createdAt || null,
+    },
   });
 });
 
-module.exports = router;
+export default router;
