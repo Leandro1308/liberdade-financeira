@@ -4,7 +4,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import pingRoutes from "./routes/ping.routes.js";
-import assinaturaRoutes from "./routes/assinatura.js"; // 🔥 NOVO
+import assinaturaRoutes from "./routes/assinatura.js";
+import authRoutes from "./routes/auth.js";
+import meRoutes from "./routes/me.js";
+import contentRoutes from "./routes/content.js";
+import usersRoutes from "./routes/users.js";
+import affiliateRoutes from "./routes/affiliate.js";
 
 const app = express();
 
@@ -28,15 +33,25 @@ app.use((req, res, next) => {
 });
 
 // =========================
-// Servir FRONTEND
+// Servir FRONTEND (assets + html)
 // =========================
 app.use(express.static(FRONTEND_DIR));
 
 // =========================
 // Rotas da API
 // =========================
+// Mantém compatibilidade com o pingRoutes do seu projeto
 app.use("/api", pingRoutes);
-app.use("/api/assinatura", assinaturaRoutes); // 🔥 NOVO
+
+// Rotas existentes no repo (necessárias para login/me/dashboard/afiliado)
+app.use("/api/auth", authRoutes);
+app.use("/api/me", meRoutes);
+app.use("/api/content", contentRoutes);
+app.use("/api/users", usersRoutes);
+app.use("/api/affiliate", affiliateRoutes);
+
+// Assinatura (BSC)
+app.use("/api/assinatura", assinaturaRoutes);
 
 // =========================
 // Rotas públicas
