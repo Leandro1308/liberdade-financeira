@@ -12,7 +12,7 @@
       <div class="brand"><span class="dot"></span> Liberdade Financeira</div>
       <div style="display:flex; gap:10px;">
         <a class="badge" href="/index.html">Início</a>
-        <a class="badge" href="/criar-conta.html">Criar conta</a>
+        <a class="badge" href="/criar-conta.html">Cadastrar-se</a>
         <a class="badge" href="/assinatura.html">Ver assinatura</a>
       </div>
     </div>
@@ -20,8 +20,8 @@
     <div style="height:16px"></div>
 
     <div class="card section" style="max-width:520px; margin:0 auto;">
-      <h2 style="margin:0 0 6px;">Acessar conta</h2>
-      <p class="muted" style="margin:0 0 14px;">Entre com seu e-mail e senha para acessar o sistema.</p>
+      <h2 style="margin:0 0 6px;">Entrar</h2>
+      <p class="muted" style="margin:0 0 14px;">Faça login para continuar.</p>
 
       <form id="form" class="grid">
         <div>
@@ -34,10 +34,6 @@
         </div>
 
         <button class="btn primary" type="submit">Entrar</button>
-
-        <div class="muted small">
-          Não tem conta? <a href="/criar-conta.html">Criar conta</a> • <a href="/index.html">Voltar para página inicial</a>
-        </div>
       </form>
     </div>
 
@@ -47,48 +43,22 @@
   <script type="module">
     import { login } from "/assets/auth.js";
     import { toast } from "/assets/ui.js";
-    import { api } from "/assets/api.js";
 
-    // Se veio ref no link, guarda para criar conta depois (opcional)
     const url = new URL(location.href);
-    const ref = url.searchParams.get("ref");
-    if (ref) localStorage.setItem("LF_REF", ref);
-
-    async function routeAfterLogin() {
-      // Busca dados do usuário logado
-      const me = await api("/api/me");
-      const sub = me?.user?.subscription;
-
-      // ✅ Se não está ativa, força passar pela assinatura (MetaMask)
-      if (!sub || sub.status !== "active") {
-        location.href = "/assinatura.html";
-        return;
-      }
-
-      // ✅ Se está ativa, vai pro painel
-      location.href = "/dashboard.html";
-    }
+    const next = url.searchParams.get("next") || "/assinatura.html";
 
     document.getElementById("form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      try{
+      try {
         const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value;
 
         await login(email, password);
 
-        toast("Login OK. Verificando assinatura…");
-        setTimeout(async ()=>{
-          try{
-            await routeAfterLogin();
-          } catch (err) {
-            // Se por algum motivo /api/me falhar, manda para assinatura (mais seguro)
-            toast(err?.message || "Falha ao verificar assinatura", "error");
-            setTimeout(()=> location.href="/assinatura.html", 600);
-          }
-        }, 300);
-      }catch(err){
-        toast(err.message || "Falha no login", "error");
+        toast("Login OK. Redirecionando…");
+        setTimeout(() => location.href = next, 700);
+      } catch (err) {
+        toast(err?.message || "Falha no login", "error");
       }
     });
   </script>
