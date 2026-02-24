@@ -10,6 +10,7 @@ function addTokenToLinks() {
   const t = getToken();
   if (!t) return;
 
+  // adiciona token só em links internos (mesmo domínio)
   document.querySelectorAll('a[href^="/"]').forEach((a) => {
     try {
       const u = new URL(a.getAttribute("href"), location.origin);
@@ -20,7 +21,8 @@ function addTokenToLinks() {
 }
 
 /**
- * ✅ Criar conta (usa o backend real: POST /api/auth/register)
+ * ✅ Criar conta
+ * Backend real: POST /api/auth/register
  * Backend espera: { name, email, password, ref }
  */
 export async function register(name, email, password, ref = null) {
@@ -43,7 +45,8 @@ export async function register(name, email, password, ref = null) {
 }
 
 /**
- * ✅ Login (usa o backend real: POST /api/auth/login)
+ * ✅ Login
+ * Backend real: POST /api/auth/login
  */
 export async function login(email, password) {
   const payload = { email, password };
@@ -58,19 +61,25 @@ export async function login(email, password) {
   return data;
 }
 
+/** ✅ Logout local */
 export function logout() {
   setToken(null);
 }
 
+/**
+ * ✅ Mantido: ensureLoggedIn
+ */
 export async function ensureLoggedIn({
   redirectToLogin = true,
   requireActive = false,
   redirectToAssinatura = true,
 } = {}) {
+  // evita loop infinito no login/criar-conta
   if (isAuthPage()) return null;
 
   const token = getToken();
 
+  // sem token
   if (!token) {
     if (redirectToLogin) {
       const next = encodeURIComponent(location.pathname + location.search);
@@ -102,5 +111,5 @@ export async function ensureLoggedIn({
   }
 }
 
-// roda automaticamente em páginas que incluem auth.js
+// roda automaticamente (mas não roda no login/criar-conta)
 ensureLoggedIn().catch(() => {});
