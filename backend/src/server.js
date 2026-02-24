@@ -54,22 +54,35 @@ async function connectDB() {
 
 // ================================
 // Worker: renovação gasless (C1)
+// - DESLIGADO por padrão (Opção A)
+// - Só liga se ENABLE_RENEWAL_WORKER=true e houver OPERATOR_PRIVATE_KEY
 // ================================
 let renewalRunning = false;
+
+function isTrue(v) {
+  return String(v || "").trim().toLowerCase() === "true";
+}
+
+function canRunRenewalWorker() {
+  // Opção A: por padrão NÃO roda
+  if (!isTrue(process.env.ENABLE_RENEWAL_WORKER)) return false;
+
+  // Renovação "gasless" exige operador
+  const hasWeb3 =
+    !!process.env.BSC_RPC_URL &&
+    !!process.env.OPERATOR_PRIVATE_KEY &&
+    !!process.env.SUBSCRIPTION_CONTRACT;
+
+  return hasWeb3;
+}
 
 async function runRenewalTick() {
   if (renewalRunning) return;
   renewalRunning = true;
 
   try {
-    const hasWeb3 =
-      !!process.env.BSC_RPC_URL &&
-      !!process.env.OPERATOR_PRIVATE_KEY &&
-      !!process.env.SUBSCRIPTION_CONTRACT;
+    if (!canRunRenewalWorker()) return;
 
-    if (!hasWeb3) return;
-
-    // ✅ agora é async (com healthcheck/timeout/cooldown)
     const contract = await getSubscriptionContract();
 
     const cycleSecondsRaw = await contract.cycleSeconds();
@@ -115,7 +128,6 @@ async function runRenewalTick() {
       }
     }
   } catch (e) {
-    // ✅ Se RPC cair, não derruba o servidor — só loga e tenta no próximo tick
     console.log("⚠️ RenewalTick error:", e?.message || e);
   } finally {
     renewalRunning = false;
@@ -123,15 +135,18 @@ async function runRenewalTick() {
 }
 
 function startRenewalWorker() {
+  if (!canRunRenewalWorker()) {
+    console.log("🧠 Renewal worker DESLIGADO (Opção A).");
+    return;
+  }
+
   setInterval(runRenewalTick, 10 * 60 * 1000); // 10 min
   setTimeout(runRenewalTick, 30 * 1000); // 30s após subir
-  console.log("🧠 Renewal worker ativo (10min).");
+  console.log("🧠 Renewal worker ATIVO (10min).");
 }
 
 async function start() {
   try {
-    // ✅ Mantive connectDB antes do listen (como você já tinha)
-    // Se você quiser, depois podemos fazer "listen primeiro" sem quebrar nada.
     await connectDB();
 
     app.listen(PORT, () => {
