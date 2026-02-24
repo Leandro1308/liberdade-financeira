@@ -10,15 +10,56 @@ function addTokenToLinks() {
   const t = getToken();
   if (!t) return;
 
-  // adiciona token só em links internos (mesmo domínio)
   document.querySelectorAll('a[href^="/"]').forEach((a) => {
     try {
       const u = new URL(a.getAttribute("href"), location.origin);
-      // não poluir se já tem
       if (!u.searchParams.get("t")) u.searchParams.set("t", t);
       a.setAttribute("href", u.pathname + u.search + u.hash);
     } catch {}
   });
+}
+
+/**
+ * ✅ Criar conta (usa o backend real: POST /api/auth/register)
+ * Backend espera: { name, email, password, ref }
+ */
+export async function register(name, email, password, ref = null) {
+  const payload = {
+    name,
+    email,
+    password,
+    ref: ref || null,
+  };
+
+  const data = await api("/api/auth/register", { method: "POST", body: payload });
+
+  const token = data?.token || null;
+  if (token) {
+    setToken(token);
+    addTokenToLinks();
+  }
+
+  return data;
+}
+
+/**
+ * ✅ Login (usa o backend real: POST /api/auth/login)
+ */
+export async function login(email, password) {
+  const payload = { email, password };
+  const data = await api("/api/auth/login", { method: "POST", body: payload });
+
+  const token = data?.token || null;
+  if (token) {
+    setToken(token);
+    addTokenToLinks();
+  }
+
+  return data;
+}
+
+export function logout() {
+  setToken(null);
 }
 
 export async function ensureLoggedIn({
@@ -26,12 +67,10 @@ export async function ensureLoggedIn({
   requireActive = false,
   redirectToAssinatura = true,
 } = {}) {
-  // ✅ evita loop infinito: não forçar auth dentro do login/criar-conta
   if (isAuthPage()) return null;
 
   const token = getToken();
 
-  // sem token: redireciona
   if (!token) {
     if (redirectToLogin) {
       const next = encodeURIComponent(location.pathname + location.search);
@@ -44,19 +83,16 @@ export async function ensureLoggedIn({
     const me = await api("/api/me");
     addTokenToLinks();
 
-    // ✅ se quiser exigir assinatura ativa em páginas do painel
     const sub = me?.user?.subscription || me?.subscription || null;
     const status = sub?.status || "inactive";
+
     if (requireActive && status !== "active") {
-      if (redirectToAssinatura) {
-        location.href = "/assinatura.html";
-      }
+      if (redirectToAssinatura) location.href = "/assinatura.html";
       return me;
     }
 
     return me;
   } catch (e) {
-    // token inválido/expirado
     setToken(null);
     if (redirectToLogin) {
       const next = encodeURIComponent(location.pathname + location.search);
@@ -66,6 +102,5 @@ export async function ensureLoggedIn({
   }
 }
 
-// ✅ roda automaticamente em páginas que incluem auth.js
-// (mas não roda no login/criar-conta por causa do isAuthPage())
+// roda automaticamente em páginas que incluem auth.js
 ensureLoggedIn().catch(() => {});
