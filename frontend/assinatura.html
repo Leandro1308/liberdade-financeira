@@ -46,20 +46,19 @@
           <div class="grid" style="gap:10px;">
             <div class="muted">
               <b>Você precisa ter na sua carteira:</b><br/>
-              • <b>Binance Coin (BNB)</b><br/>
-              • <b>Tether USD (USDT)</b>
+              • <b>BNB</b> (taxas de rede)<br/>
+              • <b>USDT</b> (assinatura)
             </div>
 
             <div class="muted">
               ✅ Forma mais simples de preparar (recomendado):<br/>
               1) Deposite <b>15 USDT</b> na sua carteira<br/>
-              2) Troque <b>3 USDT</b> por <b>BNB</b> (para taxas de rede)<br/>
+              2) Troque uma pequena parte por <b>BNB</b> (taxas de rede)<br/>
               3) Deixe o restante em <b>USDT</b> para a assinatura
             </div>
 
             <div class="small muted">
-              <b>Taxa de rede:</b> na primeira autorização, será cobrada uma taxa pequena em <b>BNB</b>
-              (normalmente inferior a <b>US$ 1</b>).
+              <b>Taxa de rede:</b> na primeira autorização (approve), será cobrada uma taxa pequena em <b>BNB</b>.
             </div>
           </div>
         </div>
@@ -84,8 +83,9 @@
 
           <div class="muted" id="balancesBox" style="margin-top:10px;display:none;">
             <div class="badge" style="margin-bottom:8px;">Saldos</div>
-            <div>• BNB: <b id="balBNB">0.0</b></div>
-            <div>• USDT: <b id="balUSDT">0.0</b></div>
+            <div>• BNB: <b id="balBNB">-</b></div>
+            <div>• USDT: <b id="balUSDT">-</b></div>
+            <div class="small muted" id="balHint" style="margin-top:8px;display:none;"></div>
           </div>
         </div>
 
@@ -96,16 +96,36 @@
             Ativar assinatura
           </button>
 
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <button class="btn ghost" id="btnRenew" style="flex:1; min-width:220px;">
+              Renovar agora
+            </button>
+            <button class="btn ghost" id="btnRefresh" style="flex:1; min-width:220px;">
+              Atualizar status
+            </button>
+          </div>
+
           <div class="small muted" style="margin-top:10px;">
-            Se for a sua primeira vez, o MetaMask pode pedir uma confirmação extra para autorizar
-            o débito do USDT. Depois, a assinatura é ativada e o acesso ao dashboard é liberado.
+            No primeiro uso, o MetaMask vai pedir uma confirmação extra para autorizar o débito do USDT (approve).
+            Depois, você assina a transação de assinatura (subscribe) e o acesso é liberado.
+          </div>
+
+          <div id="txBox" class="muted" style="margin-top:12px; display:none;">
+            <div class="badge" style="margin-bottom:8px;">Última transação</div>
+            <div>Tx: <a id="txLink" href="#" target="_blank" rel="noreferrer">-</a></div>
           </div>
 
           <div id="statusBox" class="muted" style="margin-top:12px;">
             <div class="badge" style="margin-bottom:8px;">Status da sua conta</div>
-            <div>Status: <b id="accStatus">-</b></div>
-            <div>Renovação automática: <b id="accAuto">-</b></div>
-            <div>Vencimento: <b id="accDue">-</b></div>
+            <div>Status (Mongo): <b id="accStatus">-</b></div>
+            <div>Renovação automática (Mongo): <b id="accAuto">-</b></div>
+            <div>Vencimento (Mongo): <b id="accDue">-</b></div>
+
+            <div style="height:10px"></div>
+
+            <div>Status (On-chain): <b id="onActive">-</b></div>
+            <div>Due (On-chain): <b id="onDue">-</b></div>
+            <div>Ativo até (On-chain): <b id="onNext">-</b></div>
           </div>
 
           <div style="margin-top:14px;">
@@ -121,7 +141,8 @@
   <script src="/assets/ui.js"></script>
 
   <script type="module">
-    import { api, getToken, setToken } from "/assets/api.js";
+    import { api, getToken, setToken, assinaturaApi } from "/assets/api.js";
+    import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm";
 
     function toast(msg, type){
       const el = document.getElementById('toast');
@@ -131,6 +152,7 @@
       setTimeout(()=>{ el.className='toast'; }, 4500);
     }
 
+    // mantém compatibilidade do token na URL (já existia)
     (function captureT(){
       try{
         const u = new URL(location.href);
@@ -151,9 +173,10 @@
       return 'https://metamask.app.link/dapp/' + clean;
     }
 
-    const BSC_CHAIN_ID = '0x38';
+    // BSC
+    const BSC_CHAIN_ID_HEX = '0x38';
     const BSC_PARAMS = {
-      chainId: BSC_CHAIN_ID,
+      chainId: BSC_CHAIN_ID_HEX,
       chainName: 'BNB Chain',
       nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
       rpcUrls: ['https://bsc-dataseed.binance.org/'],
@@ -164,8 +187,8 @@
       if (!window.ethereum) throw new Error('MetaMask não detectado.');
       try{
         const current = await ethereum.request({ method:'eth_chainId' });
-        if (current === BSC_CHAIN_ID) return true;
-        await ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId: BSC_CHAIN_ID }] });
+        if (current === BSC_CHAIN_ID_HEX) return true;
+        await ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId: BSC_CHAIN_ID_HEX }] });
         return true;
       }catch(err){
         if (err && err.code === 4902){
@@ -185,7 +208,7 @@
           return;
         }
         const chainId = await ethereum.request({ method:'eth_chainId' });
-        const label = (chainId === BSC_CHAIN_ID) ? 'BNB Chain' : ('Chain ' + chainId);
+        const label = (chainId === BSC_CHAIN_ID_HEX) ? 'BNB Chain' : ('Chain ' + chainId);
         badge.innerHTML = 'Rede: <b style="margin-left:6px">' + label + '</b>';
       }catch{
         badge.innerHTML = 'Rede: <b style="margin-left:6px">-</b>';
@@ -203,11 +226,56 @@
       if (!st || !au || !du) return;
 
       const sub = me?.user?.subscription || me?.subscription || null;
-
       st.textContent = sub?.status || 'inactive';
       const auto = sub?.renovacaoAutomatica;
       au.textContent = auto ? 'SIM' : 'NÃO';
       du.textContent = sub?.currentPeriodEnd || '-';
+    }
+
+    function setOnchainUI(on){
+      const a = document.getElementById('onActive');
+      const d = document.getElementById('onDue');
+      const n = document.getElementById('onNext');
+      if (!a || !d || !n) return;
+
+      if (!on) {
+        a.textContent = '-';
+        d.textContent = '-';
+        n.textContent = '-';
+        return;
+      }
+
+      const fmt = (v) => (v === null || v === undefined) ? '-' : (v ? 'SIM' : 'NÃO');
+
+      a.textContent = (on.active === null) ? 'indisponível' : fmt(on.active);
+      d.textContent = (on.due === null) ? 'indisponível' : fmt(on.due);
+
+      if (on.nextDueAtISO) {
+        // mostra local
+        try {
+          n.textContent = new Date(on.nextDueAtISO).toLocaleString();
+        } catch {
+          n.textContent = on.nextDueAtISO;
+        }
+      } else {
+        n.textContent = (on.nextDueAt === null) ? 'indisponível' : '-';
+      }
+    }
+
+    function showTx(hash){
+      const box = document.getElementById('txBox');
+      const link = document.getElementById('txLink');
+      if (!box || !link) return;
+
+      if (!hash) {
+        box.style.display = 'none';
+        return;
+      }
+
+      const url = 'https://bscscan.com/tx/' + hash;
+      link.href = url;
+      link.textContent = hash.slice(0,10) + '...' + hash.slice(-8);
+      box.style.display = 'block';
     }
 
     async function apiGetMe(){
@@ -215,20 +283,108 @@
     }
 
     async function apiSaveWallet(walletAddress){
-      // ✅ backend aceita walletAddress (e também aceita wallet via compat)
       return api('/api/me/wallet', { method:'POST', body:{ walletAddress } });
     }
 
-    async function apiParams(){
-      return api('/api/assinatura/params');
+    // ========= Web3 helpers (no browser) =========
+    const ERC20_ABI = [
+      "function balanceOf(address) view returns (uint256)",
+      "function allowance(address owner, address spender) view returns (uint256)",
+      "function approve(address spender, uint256 value) returns (bool)",
+      "function decimals() view returns (uint8)"
+    ];
+
+    const SUBSCRIBE_ABI = [
+      "function subscribe(address referrer)",
+      "function renew()"
+    ];
+
+    function getBrowserProvider(){
+      if (!window.ethereum) throw new Error("MetaMask não detectado.");
+      return new ethers.BrowserProvider(window.ethereum);
     }
 
-    async function apiSubscribe(walletAddress){
-      return api('/api/assinatura/subscribe', { method:'POST', body:{ walletAddress } });
+    async function getSelectedAccount(){
+      const accounts = await ethereum.request({ method:'eth_requestAccounts' });
+      const from = accounts?.[0];
+      if (!from) throw new Error('Selecione uma conta no MetaMask.');
+      return ethers.getAddress(from);
     }
 
-    async function sendTx(tx){
-      return ethereum.request({ method:'eth_sendTransaction', params:[tx] });
+    async function readBalances({ walletAddress, tokenAddress }){
+      const provider = getBrowserProvider();
+
+      // BNB
+      const bnbWei = await provider.getBalance(walletAddress);
+      const bnb = ethers.formatEther(bnbWei);
+
+      // USDT
+      const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+      let dec = 18;
+      try { dec = Number(await erc20.decimals()); } catch {}
+      const usdtRaw = await erc20.balanceOf(walletAddress);
+      const usdt = ethers.formatUnits(usdtRaw, dec);
+
+      return { bnb, usdt, decimals: dec, usdtRaw: usdtRaw.toString() };
+    }
+
+    async function readAllowance({ walletAddress, tokenAddress, spender }){
+      const provider = getBrowserProvider();
+      const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+      const allowance = await erc20.allowance(walletAddress, spender);
+      return allowance; // bigint-like
+    }
+
+    async function sendApprove({ tokenAddress, spender, amount }){
+      const provider = getBrowserProvider();
+      const signer = await provider.getSigner();
+      const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
+      const tx = await erc20.approve(spender, amount);
+      return tx.hash;
+    }
+
+    async function sendSubscribe({ contractAddress, referrer }){
+      const provider = getBrowserProvider();
+      const signer = await provider.getSigner();
+      const c = new ethers.Contract(contractAddress, SUBSCRIBE_ABI, signer);
+      const tx = await c.subscribe(referrer);
+      return tx.hash;
+    }
+
+    async function sendRenew({ contractAddress }){
+      const provider = getBrowserProvider();
+      const signer = await provider.getSigner();
+      const c = new ethers.Contract(contractAddress, SUBSCRIBE_ABI, signer);
+      const tx = await c.renew();
+      return tx.hash;
+    }
+
+    async function refreshOnchainStatus(){
+      try{
+        const data = await assinaturaApi.getOnchainStatus();
+        setOnchainUI(data?.onchain || null);
+        return data;
+      }catch(e){
+        setOnchainUI(null);
+        return null;
+      }
+    }
+
+    // ========= init =========
+    let CONTRACT = null; // {contractAddress, tokenAddress, price, txFeeBps, total, referrerAddress}
+
+    async function loadContractInfo(){
+      // Preferimos o prepare/params do backend (fonte única)
+      const info = await assinaturaApi.getContractInfo();
+      if (!info?.ok) throw new Error('Contrato indisponível no backend.');
+      return info;
+    }
+
+    async function prepareFlow(walletAddress){
+      // backend resolve referrer e calcula total
+      const flow = await assinaturaApi.prepareSubscribe({ walletAddress });
+      if (!flow?.ok) throw new Error('Não foi possível preparar a assinatura.');
+      return flow;
     }
 
     (async function init(){
@@ -252,6 +408,12 @@
           info.style.display = 'block';
           info.innerHTML = 'Carteira salva: <b>' + saved + '</b>';
         }
+
+        // carrega info do contrato
+        await loadContractInfo();
+
+        // status on-chain (best-effort)
+        await refreshOnchainStatus();
       }catch(e){
         toast(e?.message || 'Não autenticado.', 'error');
       }
@@ -264,9 +426,7 @@
           return;
         }
         await ensureBsc();
-        const accounts = await ethereum.request({ method:'eth_requestAccounts' });
-        const acc = accounts?.[0];
-        if (!acc) throw new Error('Nenhuma conta selecionada.');
+        const acc = await getSelectedAccount();
         document.getElementById('walletInput').value = acc;
         toast('Carteira conectada: ' + acc.slice(0,6) + '...' + acc.slice(-4));
         await refreshNetBadge();
@@ -296,27 +456,6 @@
     document.getElementById('btnCheck')?.addEventListener('click', async ()=>{
       try{
         await apiGetMe();
-        const p = await apiParams();
-        await refreshNetBadge();
-
-        const bnb = p?.balances?.bnb ?? p?.bnb ?? null;
-        const usdt = p?.balances?.usdt ?? p?.usdt ?? null;
-
-        if (bnb != null || usdt != null){
-          document.getElementById('balancesBox').style.display = 'block';
-          if (bnb != null) document.getElementById('balBNB').textContent = bnb;
-          if (usdt != null) document.getElementById('balUSDT').textContent = usdt;
-        } else {
-          toast('Saldos: indisponível no momento.', 'error');
-        }
-      }catch(err){
-        toast(err?.message || 'Falha ao verificar saldos.', 'error');
-      }
-    });
-
-    document.getElementById('btnSubscribe')?.addEventListener('click', async ()=>{
-      try{
-        const me = await apiGetMe();
 
         if (!window.ethereum){
           toast('MetaMask não detectado. No celular, use "Abrir no MetaMask".', 'error');
@@ -329,37 +468,158 @@
         const wallet = document.getElementById('walletInput').value.trim();
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
 
-        // garante que a wallet está salva
-        await apiSaveWallet(wallet);
+        const contractInfo = await loadContractInfo();
 
-        const flow = await apiSubscribe(wallet);
+        // token do backend é a fonte de verdade
+        const tokenAddress = contractInfo?.token || contractInfo?.USDT_ADDRESS || null;
+        if (!tokenAddress || !isValidAddress(tokenAddress)) throw new Error('Token USDT indisponível.');
 
-        if (Array.isArray(flow?.txs) && flow.txs.length){
-          const accounts = await ethereum.request({ method:'eth_requestAccounts' });
-          const from = accounts?.[0];
-          if (!from) throw new Error('Selecione uma conta no MetaMask.');
+        const b = await readBalances({ walletAddress: wallet, tokenAddress });
 
-          for (const raw of flow.txs){
-            const tx = Object.assign({}, raw);
-            tx.from = tx.from || from;
-            tx.value = tx.value || '0x0';
-            await sendTx(tx);
-          }
+        document.getElementById('balancesBox').style.display = 'block';
+        document.getElementById('balBNB').textContent = b.bnb;
+        document.getElementById('balUSDT').textContent = b.usdt;
 
-          if (flow.action === "approve") {
-            toast('Aprovação enviada no MetaMask. Aguarde confirmar e clique novamente em "Ativar assinatura".');
-            return;
-          }
-
-          toast('Transações enviadas. Confirme no MetaMask e aguarde a rede.');
-        } else {
-          toast('Processo iniciado. Aguarde alguns segundos e atualize o status.');
+        const hint = document.getElementById('balHint');
+        if (hint) {
+          hint.style.display = 'block';
+          hint.textContent = 'Se BNB estiver baixo, você não consegue pagar as taxas de approve/subscribe/renew.';
         }
 
-        const me2 = await apiGetMe();
-        setStatusUI(me2);
+        toast('Saldos atualizados.');
+      }catch(err){
+        toast(err?.message || 'Falha ao verificar saldos.', 'error');
+      }
+    });
+
+    document.getElementById('btnRefresh')?.addEventListener('click', async ()=>{
+      try{
+        const me = await apiGetMe();
+        setStatusUI(me);
+        await refreshOnchainStatus();
+        toast('Status atualizado.');
+      }catch(e){
+        toast(e?.message || 'Falha ao atualizar status.', 'error');
+      }
+    });
+
+    document.getElementById('btnSubscribe')?.addEventListener('click', async ()=>{
+      try{
+        await apiGetMe();
+
+        if (!window.ethereum){
+          toast('MetaMask não detectado. No celular, use "Abrir no MetaMask".', 'error');
+          return;
+        }
+
+        await ensureBsc();
+        await refreshNetBadge();
+
+        const selected = await getSelectedAccount();
+
+        const wallet = document.getElementById('walletInput').value.trim();
+        if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
+
+        // UX: exige que a conta selecionada seja a mesma da wallet do input
+        if (selected.toLowerCase() !== wallet.toLowerCase()) {
+          throw new Error('A conta ativa no MetaMask é diferente da carteira informada. Troque a conta no MetaMask.');
+        }
+
+        // salva wallet no backend
+        await apiSaveWallet(wallet);
+
+        // prepara fluxo no backend (referrer + total)
+        const flow = await prepareFlow(wallet);
+
+        const contractAddress = flow.contractAddress;
+        const tokenAddress = flow.tokenAddress;
+        const referrer = flow.referrerAddress || ethers.ZeroAddress;
+        const total = BigInt(flow.total);
+
+        if (!isValidAddress(contractAddress) || !isValidAddress(tokenAddress)) {
+          throw new Error('Contrato/token inválidos no backend.');
+        }
+
+        // 1) check saldos (BNB + USDT)
+        const bal = await readBalances({ walletAddress: wallet, tokenAddress });
+        const usdtRaw = BigInt(bal.usdtRaw);
+
+        // check USDT suficiente
+        if (usdtRaw < total) {
+          toast('Saldo USDT insuficiente para assinar (inclui taxa do contrato).', 'error');
+          document.getElementById('balancesBox').style.display = 'block';
+          document.getElementById('balBNB').textContent = bal.bnb;
+          document.getElementById('balUSDT').textContent = bal.usdt;
+          return;
+        }
+
+        // 2) approve exato (se necessário)
+        const allowance = await readAllowance({ walletAddress: wallet, tokenAddress, spender: contractAddress });
+        const allow = BigInt(allowance.toString());
+
+        if (allow < total) {
+          toast('Confirme a autorização (approve) no MetaMask...');
+          const h1 = await sendApprove({ tokenAddress, spender: contractAddress, amount: total });
+          showTx(h1);
+          toast('Approve enviado. Agora confirme a assinatura (subscribe)...');
+
+          // Não esperamos confirmar bloco aqui (sem indexer).
+          // Só seguimos para subscribe; se o usuário preferir, pode clicar de novo.
+        } else {
+          toast('Approve já está OK. Indo para assinatura (subscribe)...');
+        }
+
+        // 3) subscribe(referrer)
+        const h2 = await sendSubscribe({ contractAddress, referrer });
+        showTx(h2);
+        toast('Subscribe enviado! Aguarde confirmar na rede e clique em "Atualizar status".');
+
+        // Atualiza status best-effort
+        await refreshOnchainStatus();
       }catch(err){
         toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
+      }
+    });
+
+    document.getElementById('btnRenew')?.addEventListener('click', async ()=>{
+      try{
+        await apiGetMe();
+
+        if (!window.ethereum){
+          toast('MetaMask não detectado. No celular, use "Abrir no MetaMask".', 'error');
+          return;
+        }
+
+        await ensureBsc();
+        await refreshNetBadge();
+
+        const selected = await getSelectedAccount();
+        const wallet = document.getElementById('walletInput').value.trim();
+        if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
+        if (selected.toLowerCase() !== wallet.toLowerCase()) {
+          throw new Error('A conta ativa no MetaMask é diferente da carteira informada. Troque a conta no MetaMask.');
+        }
+
+        const info = await assinaturaApi.getContractInfo();
+        if (!info?.ok) throw new Error('Contrato indisponível no backend.');
+
+        // endereço do contrato é a fonte de verdade do backend
+        const contractAddress = info.contractAddress || info.contractAddress || null;
+        // fallback: reaproveita de /params se necessário
+        const p = await assinaturaApi.getParams().catch(()=>null);
+        const addr = (p?.contractAddress) || (info?.contractAddress) || null;
+
+        const caddr = addr;
+        if (!caddr || !isValidAddress(caddr)) throw new Error('Endereço do contrato inválido.');
+
+        toast('Confirme a renovação (renew) no MetaMask...');
+        const h = await sendRenew({ contractAddress: caddr });
+        showTx(h);
+        toast('Renew enviado! Aguarde confirmar e clique em "Atualizar status".');
+
+        await refreshOnchainStatus();
+      }catch(err){
+        toast(err?.message || 'Falha ao renovar.', 'error');
       }
     });
   </script>
