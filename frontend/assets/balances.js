@@ -22,8 +22,12 @@ function formatUnits(value, decimals) {
   const intPart = v / base;
   const fracPart = v % base;
 
-  // 4 casas por padrão
-  const fracStr = fracPart.toString().padStart(Number(decimals), "0").slice(0, 4);
+  // 4 casas
+  const fracStr = fracPart
+    .toString()
+    .padStart(Number(decimals), "0")
+    .slice(0, 4);
+
   return `${intPart.toString()}.${fracStr}`;
 }
 
@@ -49,7 +53,6 @@ async function ethCall(to, data) {
 
 async function getDecimals(token) {
   const res = await ethCall(token, SIG_DECIMALS);
-  // res é 32 bytes hex
   return Number(hexToBigInt(res));
 }
 
@@ -70,8 +73,22 @@ async function getNativeBalance(owner) {
 async function ensureBscChain() {
   const chainId = await window.ethereum.request({ method: "eth_chainId" });
   if (chainId !== CHAIN_ID_BSC) {
-    throw new Error("Conecte na rede BNB Chain (BSC) para verificar saldos.");
+    throw new Error("Conecte na rede BNB Smart Chain (BSC) para verificar saldos.");
   }
+}
+
+function isAddress(addr) {
+  return typeof addr === "string" && addr.startsWith("0x") && addr.length === 42;
+}
+
+async function getConnectedAddressNoPrompt() {
+  const accounts = await window.ethereum.request({ method: "eth_accounts" });
+  return accounts?.[0] || null;
+}
+
+async function connectAndGetAddress() {
+  const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+  return accounts?.[0] || null;
 }
 
 export async function attachBalanceButtons({
@@ -90,7 +107,6 @@ export async function attachBalanceButtons({
   const outUsdt = document.querySelector(outUsdtSelector);
   const outWalletSaved = document.querySelector(outWalletSelector);
 
-  // Se a sua página tiver IDs diferentes, me diga quais são que eu ajusto.
   if (!input || !btnCheck) {
     console.warn("balances.js: Não achei input/botão. Verifique os IDs.", {
       inputSelector,
@@ -103,50 +119,127 @@ export async function attachBalanceButtons({
     btnCheck.addEventListener("click", () => {
       toast("MetaMask não encontrado. Abra no navegador do MetaMask ou instale a extensão.", "error");
     });
+    if (btnConnect) {
+      btnConnect.addEventListener("click", () => {
+        toast("MetaMask não encontrado. Abra no navegador do MetaMask ou instale a extensão.", "error");
+      });
+    }
     return;
   }
 
-  // Conectar MetaMask (opcional)
+  const setWalletUI = (addr) => {
+    if (addr && isAddress(addr)) {
+      input.value = addr;
+      if (outWalletSaved) outWalletSaved.textContent = `Carteira: ${short(addr)}`;
+    }
+  };
+
+  const fetchAndRender = async (addr) => {
+    if (!addr || !isAddress(addr)) throw new Error("Nenhuma carteira válida conectada.");
+    await ensureBscChain();
+
+    const [bnbWei, usdtDecimals, usdtBal] = await Promise.all([
+      getNativeBalance(addr),
+      getDecimals(USDT_BSC),
+      getErc20Balance(USDT_BSC, addr),
+    ]);
+
+    const bnb = formatUnits(bnbWei, 18);
+    const usdt = formatUnits(usdtBal, usdtDecimals);
+
+    if (outBnb) outBnb.textContent = `BNB: ${bnb}`;
+    if (outUsdt) outUsdt.textContent = `USDT: ${usdt}`;
+
+    return { bnb, usdt };
+  };
+
+  // ✅ tenta puxar conta conectada sem popup (melhor UX)
+  try {
+    const connected = await getConnectedAddressNoPrompt();
+    if (connected) {
+      setWalletUI(connected);
+      // atualiza saldo automaticamente
+      try {
+        await fetchAndRender(connected);
+      } catch (e) {
+        // se estiver na rede errada, só avisa (sem travar)
+        toast(e?.message || "Falha ao verificar saldos.", "error");
+      }
+    }
+  } catch (_) {}
+
+  // Conectar MetaMask (botão)
   if (btnConnect) {
     btnConnect.addEventListener("click", async () => {
       try {
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        const addr = accounts?.[0];
+        const addr = await connectAndGetAddress();
         if (!addr) throw new Error("Nenhuma conta selecionada no MetaMask.");
-        input.value = addr;
-        if (outWalletSaved) outWalletSaved.textContent = `Carteira: ${short(addr)}`;
-        toast("Carteira preenchida pelo MetaMask.");
+        setWalletUI(addr);
+
+        await fetchAndRender(addr);
+        toast(`Carteira conectada e saldos atualizados (${short(addr)}).`);
       } catch (e) {
         toast(e?.message || "Falha ao conectar MetaMask", "error");
       }
     });
   }
 
-  // Verificar saldos
+  // Verificar saldos (botão)
   btnCheck.addEventListener("click", async () => {
     try {
-      const addr = input.value.trim();
-      if (!addr || !addr.startsWith("0x") || addr.length !== 42) {
-        throw new Error("Cole um endereço válido (0x...).");
+      // ✅ prioridade: conta conectada
+      const connected = await getConnectedAddressNoPrompt();
+
+      // se não tiver conectada, tenta usar o input (mas avisa)
+      const typed = input.value.trim();
+
+      let addrToUse = connected || typed;
+
+      if (!addrToUse || !isAddress(addrToUse)) {
+        throw new Error("Conecte o MetaMask para ver o saldo real (ou cole um endereço válido).");
       }
 
-      await ensureBscChain();
+      // Se a pessoa colou um endereço diferente do conectado, isso causa “saldo errado”
+      if (connected && isAddress(typed) && typed.toLowerCase() !== connected.toLowerCase()) {
+        toast(
+          `Atenção: o endereço colado é diferente do MetaMask conectado. Vou usar o conectado (${short(connected)}).`,
+          "error"
+        );
+        addrToUse = connected;
+        setWalletUI(connected);
+      } else if (connected) {
+        setWalletUI(connected);
+      }
 
-      // BNB (18 dec)
-      const bnbWei = await getNativeBalance(addr);
-      const bnb = formatUnits(bnbWei, 18);
-
-      // USDT
-      const usdtDecimals = await getDecimals(USDT_BSC); // normalmente 18 na BSC
-      const usdtBal = await getErc20Balance(USDT_BSC, addr);
-      const usdt = formatUnits(usdtBal, usdtDecimals);
-
-      if (outBnb) outBnb.textContent = `BNB: ${bnb}`;
-      if (outUsdt) outUsdt.textContent = `USDT: ${usdt}`;
-
-      toast(`Saldos atualizados (${short(addr)}).`);
+      await fetchAndRender(addrToUse);
+      toast(`Saldos atualizados (${short(addrToUse)}).`);
     } catch (e) {
       toast(e?.message || "Falha ao verificar saldos", "error");
+    }
+  });
+
+  // ✅ atualiza automático quando troca de conta/rede
+  window.ethereum.on?.("accountsChanged", async (accounts) => {
+    const addr = accounts?.[0];
+    if (!addr) return;
+    setWalletUI(addr);
+    try {
+      await fetchAndRender(addr);
+      toast(`Conta alterada: ${short(addr)}. Saldos atualizados.`);
+    } catch (e) {
+      toast(e?.message || "Falha ao atualizar saldos após trocar de conta.", "error");
+    }
+  });
+
+  window.ethereum.on?.("chainChanged", async () => {
+    const addr = await getConnectedAddressNoPrompt();
+    if (!addr) return;
+    setWalletUI(addr);
+    try {
+      await fetchAndRender(addr);
+      toast("Rede alterada. Saldos atualizados.");
+    } catch (e) {
+      toast(e?.message || "Conecte na BNB Smart Chain (BSC).", "error");
     }
   });
 }
