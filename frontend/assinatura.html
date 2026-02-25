@@ -1,10 +1,16 @@
-<!doctype html>
+<!doctype html> 
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Ativar assinatura</title>
   <link rel="stylesheet" href="/assets/app.css" />
+
+  <!-- ✅ Só UI: esconde infos técnicas (mantém no HTML para não quebrar o JS) -->
+  <style>
+    /* O bloco técnico continua existindo (para o código), mas o usuário não vê */
+    #statusBox { display: none !important; }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -115,6 +121,15 @@
             <div>Tx: <a id="txLink" href="#" target="_blank" rel="noreferrer">-</a></div>
           </div>
 
+          <!-- ✅ NOVO: Status “humano” (sem Mongo/On-chain) -->
+          <div id="userStatusBox" class="muted" style="margin-top:12px;">
+            <div class="badge" style="margin-bottom:8px;">Status da assinatura</div>
+            <div>Assinatura: <b id="uiSubStatus">-</b></div>
+            <div>Renovação automática: <b id="uiAuto">-</b></div>
+            <div>Próxima renovação: <b id="uiDue">-</b></div>
+          </div>
+
+          <!-- ✅ BLOCO TÉCNICO (mantido para não quebrar JS, mas oculto via CSS) -->
           <div id="statusBox" class="muted" style="margin-top:12px;">
             <div class="badge" style="margin-bottom:8px;">Status da sua conta</div>
             <div>Status (Mongo): <b id="accStatus">-</b></div>
@@ -219,17 +234,46 @@
       return /^0x[a-fA-F0-9]{40}$/.test((v||'').trim());
     }
 
+    // ✅ mantém as IDs antigas (técnicas) preenchidas para compatibilidade
+    // ✅ e também preenche o status “humano” (novo)
     function setStatusUI(me){
       const st = document.getElementById('accStatus');
       const au = document.getElementById('accAuto');
       const du = document.getElementById('accDue');
-      if (!st || !au || !du) return;
+
+      const uiSt = document.getElementById('uiSubStatus');
+      const uiAu = document.getElementById('uiAuto');
+      const uiDu = document.getElementById('uiDue');
 
       const sub = me?.user?.subscription || me?.subscription || null;
-      st.textContent = sub?.status || 'inactive';
-      const auto = sub?.renovacaoAutomatica;
-      au.textContent = auto ? 'SIM' : 'NÃO';
-      du.textContent = sub?.currentPeriodEnd || '-';
+
+      const status = (sub?.status || 'inactive');
+      const auto = !!sub?.renovacaoAutomatica;
+      const dueRaw = sub?.currentPeriodEnd || '-';
+
+      // técnicos (mantidos)
+      if (st) st.textContent = status;
+      if (au) au.textContent = auto ? 'SIM' : 'NÃO';
+      if (du) du.textContent = dueRaw;
+
+      // humanos (novos)
+      if (uiSt) uiSt.textContent = (status === 'active') ? 'Ativa' : 'Inativa';
+      if (uiAu) uiAu.textContent = auto ? 'Ativada' : 'Desativada';
+
+      if (uiDu) {
+        if (!dueRaw || dueRaw === '-') {
+          uiDu.textContent = '-';
+        } else {
+          // tenta formatar se vier ISO/date string
+          try {
+            const d = new Date(dueRaw);
+            if (!isNaN(d.getTime())) uiDu.textContent = d.toLocaleString();
+            else uiDu.textContent = String(dueRaw);
+          } catch {
+            uiDu.textContent = String(dueRaw);
+          }
+        }
+      }
     }
 
     function setOnchainUI(on){
@@ -251,7 +295,6 @@
       d.textContent = (on.due === null) ? 'indisponível' : fmt(on.due);
 
       if (on.nextDueAtISO) {
-        // mostra local
         try {
           n.textContent = new Date(on.nextDueAtISO).toLocaleString();
         } catch {
@@ -332,7 +375,7 @@
       const provider = getBrowserProvider();
       const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
       const allowance = await erc20.allowance(walletAddress, spender);
-      return allowance; // bigint-like
+      return allowance;
     }
 
     async function sendApprove({ tokenAddress, spender, amount }){
@@ -371,17 +414,15 @@
     }
 
     // ========= init =========
-    let CONTRACT = null; // {contractAddress, tokenAddress, price, txFeeBps, total, referrerAddress}
+    let CONTRACT = null;
 
     async function loadContractInfo(){
-      // Preferimos o prepare/params do backend (fonte única)
       const info = await assinaturaApi.getContractInfo();
       if (!info?.ok) throw new Error('Contrato indisponível no backend.');
       return info;
     }
 
     async function prepareFlow(walletAddress){
-      // backend resolve referrer e calcula total
       const flow = await assinaturaApi.prepareSubscribe({ walletAddress });
       if (!flow?.ok) throw new Error('Não foi possível preparar a assinatura.');
       return flow;
@@ -409,10 +450,7 @@
           info.innerHTML = 'Carteira salva: <b>' + saved + '</b>';
         }
 
-        // carrega info do contrato
         await loadContractInfo();
-
-        // status on-chain (best-effort)
         await refreshOnchainStatus();
       }catch(e){
         toast(e?.message || 'Não autenticado.', 'error');
@@ -469,8 +507,6 @@
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
 
         const contractInfo = await loadContractInfo();
-
-        // token do backend é a fonte de verdade
         const tokenAddress = contractInfo?.token || contractInfo?.USDT_ADDRESS || null;
         if (!tokenAddress || !isValidAddress(tokenAddress)) throw new Error('Token USDT indisponível.');
 
@@ -520,15 +556,12 @@
         const wallet = document.getElementById('walletInput').value.trim();
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
 
-        // UX: exige que a conta selecionada seja a mesma da wallet do input
         if (selected.toLowerCase() !== wallet.toLowerCase()) {
           throw new Error('A conta ativa no MetaMask é diferente da carteira informada. Troque a conta no MetaMask.');
         }
 
-        // salva wallet no backend
         await apiSaveWallet(wallet);
 
-        // prepara fluxo no backend (referrer + total)
         const flow = await prepareFlow(wallet);
 
         const contractAddress = flow.contractAddress;
@@ -540,11 +573,9 @@
           throw new Error('Contrato/token inválidos no backend.');
         }
 
-        // 1) check saldos (BNB + USDT)
         const bal = await readBalances({ walletAddress: wallet, tokenAddress });
         const usdtRaw = BigInt(bal.usdtRaw);
 
-        // check USDT suficiente
         if (usdtRaw < total) {
           toast('Saldo USDT insuficiente para assinar (inclui taxa do contrato).', 'error');
           document.getElementById('balancesBox').style.display = 'block';
@@ -553,7 +584,6 @@
           return;
         }
 
-        // 2) approve exato (se necessário)
         const allowance = await readAllowance({ walletAddress: wallet, tokenAddress, spender: contractAddress });
         const allow = BigInt(allowance.toString());
 
@@ -562,19 +592,14 @@
           const h1 = await sendApprove({ tokenAddress, spender: contractAddress, amount: total });
           showTx(h1);
           toast('Approve enviado. Agora confirme a assinatura (subscribe)...');
-
-          // Não esperamos confirmar bloco aqui (sem indexer).
-          // Só seguimos para subscribe; se o usuário preferir, pode clicar de novo.
         } else {
           toast('Approve já está OK. Indo para assinatura (subscribe)...');
         }
 
-        // 3) subscribe(referrer)
         const h2 = await sendSubscribe({ contractAddress, referrer });
         showTx(h2);
         toast('Subscribe enviado! Aguarde confirmar na rede e clique em "Atualizar status".');
 
-        // Atualiza status best-effort
         await refreshOnchainStatus();
       }catch(err){
         toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
@@ -603,9 +628,6 @@
         const info = await assinaturaApi.getContractInfo();
         if (!info?.ok) throw new Error('Contrato indisponível no backend.');
 
-        // endereço do contrato é a fonte de verdade do backend
-        const contractAddress = info.contractAddress || info.contractAddress || null;
-        // fallback: reaproveita de /params se necessário
         const p = await assinaturaApi.getParams().catch(()=>null);
         const addr = (p?.contractAddress) || (info?.contractAddress) || null;
 
@@ -623,17 +645,5 @@
       }
     });
   </script>
-  <script type="module">
-  import { attachBalanceButtons } from "/assets/balances.js";
-
-  attachBalanceButtons({
-    inputSelector: "#wallet",
-    btnCheckSelector: "#btnCheckBalances",
-    btnConnectSelector: "#btnConnectMetamask",
-    outBnbSelector: "#outBnb",
-    outUsdtSelector: "#outUsdt",
-    outWalletSelector: "#outWalletSaved",
-  });
-</script>
 </body>
 </html>
