@@ -623,5 +623,17 @@
       }
     });
   </script>
+  <script type="module">
+  import { attachBalanceButtons } from "/assets/balances.js";
+
+  attachBalanceButtons({
+    inputSelector: "#wallet",
+    btnCheckSelector: "#btnCheckBalances",
+    btnConnectSelector: "#btnConnectMetamask",
+    outBnbSelector: "#outBnb",
+    outUsdtSelector: "#outUsdt",
+    outWalletSelector: "#outWalletSaved",
+  });
+</script>
 </body>
 </html>
