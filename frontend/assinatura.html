@@ -1,4 +1,4 @@
-<!doctype html> 
+<!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
@@ -6,7 +6,6 @@
   <title>Ativar assinatura</title>
   <link rel="stylesheet" href="/assets/app.css" />
 
-  <!-- ✅ Só UI: esconde infos técnicas (mantém no HTML para não quebrar o JS) -->
   <style>
     /* O bloco técnico continua existindo (para o código), mas o usuário não vê */
     #statusBox { display: none !important; }
@@ -58,7 +57,7 @@
 
             <div class="muted">
               ✅ Forma mais simples de preparar (recomendado):<br/>
-              1) Deposite <b>15 USDT</b> na sua carteira<br/>
+              1) Deposite <b>USDT</b> na sua carteira<br/>
               2) Troque uma pequena parte por <b>BNB</b> (taxas de rede)<br/>
               3) Deixe o restante em <b>USDT</b> para a assinatura
             </div>
@@ -121,7 +120,6 @@
             <div>Tx: <a id="txLink" href="#" target="_blank" rel="noreferrer">-</a></div>
           </div>
 
-          <!-- ✅ NOVO: Status “humano” (sem Mongo/On-chain) -->
           <div id="userStatusBox" class="muted" style="margin-top:12px;">
             <div class="badge" style="margin-bottom:8px;">Status da assinatura</div>
             <div>Assinatura: <b id="uiSubStatus">-</b></div>
@@ -129,7 +127,6 @@
             <div>Próxima renovação: <b id="uiDue">-</b></div>
           </div>
 
-          <!-- ✅ BLOCO TÉCNICO (mantido para não quebrar JS, mas oculto via CSS) -->
           <div id="statusBox" class="muted" style="margin-top:12px;">
             <div class="badge" style="margin-bottom:8px;">Status da sua conta</div>
             <div>Status (Mongo): <b id="accStatus">-</b></div>
@@ -167,7 +164,6 @@
       setTimeout(()=>{ el.className='toast'; }, 4500);
     }
 
-    // mantém compatibilidade do token na URL (já existia)
     (function captureT(){
       try{
         const u = new URL(location.href);
@@ -234,8 +230,6 @@
       return /^0x[a-fA-F0-9]{40}$/.test((v||'').trim());
     }
 
-    // ✅ mantém as IDs antigas (técnicas) preenchidas para compatibilidade
-    // ✅ e também preenche o status “humano” (novo)
     function setStatusUI(me){
       const st = document.getElementById('accStatus');
       const au = document.getElementById('accAuto');
@@ -251,12 +245,10 @@
       const auto = !!sub?.renovacaoAutomatica;
       const dueRaw = sub?.currentPeriodEnd || '-';
 
-      // técnicos (mantidos)
       if (st) st.textContent = status;
       if (au) au.textContent = auto ? 'SIM' : 'NÃO';
       if (du) du.textContent = dueRaw;
 
-      // humanos (novos)
       if (uiSt) uiSt.textContent = (status === 'active') ? 'Ativa' : 'Inativa';
       if (uiAu) uiAu.textContent = auto ? 'Ativada' : 'Desativada';
 
@@ -264,7 +256,6 @@
         if (!dueRaw || dueRaw === '-') {
           uiDu.textContent = '-';
         } else {
-          // tenta formatar se vier ISO/date string
           try {
             const d = new Date(dueRaw);
             if (!isNaN(d.getTime())) uiDu.textContent = d.toLocaleString();
@@ -295,11 +286,8 @@
       d.textContent = (on.due === null) ? 'indisponível' : fmt(on.due);
 
       if (on.nextDueAtISO) {
-        try {
-          n.textContent = new Date(on.nextDueAtISO).toLocaleString();
-        } catch {
-          n.textContent = on.nextDueAtISO;
-        }
+        try { n.textContent = new Date(on.nextDueAtISO).toLocaleString(); }
+        catch { n.textContent = on.nextDueAtISO; }
       } else {
         n.textContent = (on.nextDueAt === null) ? 'indisponível' : '-';
       }
@@ -329,7 +317,7 @@
       return api('/api/me/wallet', { method:'POST', body:{ walletAddress } });
     }
 
-    // ========= Web3 helpers (no browser) =========
+    // ========= Web3 helpers (browser) =========
     const ERC20_ABI = [
       "function balanceOf(address) view returns (uint256)",
       "function allowance(address owner, address spender) view returns (uint256)",
@@ -347,21 +335,33 @@
       return new ethers.BrowserProvider(window.ethereum);
     }
 
-    async function getSelectedAccount(){
+    // ✅ pega a conta conectada SEM abrir popup (se já estiver conectada)
+    async function getConnectedAccount(){
+      if (!window.ethereum) return null;
+      const accounts = await ethereum.request({ method:'eth_accounts' });
+      const from = accounts?.[0];
+      return from ? ethers.getAddress(from) : null;
+    }
+
+    // ✅ conecta (abre popup se precisar)
+    async function connectAndGetAccount(){
       const accounts = await ethereum.request({ method:'eth_requestAccounts' });
       const from = accounts?.[0];
       if (!from) throw new Error('Selecione uma conta no MetaMask.');
       return ethers.getAddress(from);
     }
 
+    function setWalletInput(addr){
+      const input = document.getElementById('walletInput');
+      if (input && addr) input.value = addr;
+    }
+
     async function readBalances({ walletAddress, tokenAddress }){
       const provider = getBrowserProvider();
 
-      // BNB
       const bnbWei = await provider.getBalance(walletAddress);
       const bnb = ethers.formatEther(bnbWei);
 
-      // USDT
       const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
       let dec = 18;
       try { dec = Number(await erc20.decimals()); } catch {}
@@ -413,7 +413,6 @@
       }
     }
 
-    // ========= init =========
     let CONTRACT = null;
 
     async function loadContractInfo(){
@@ -428,14 +427,77 @@
       return flow;
     }
 
+    function showBalancesBox({ bnb, usdt, hintText }){
+      document.getElementById('balancesBox').style.display = 'block';
+      document.getElementById('balBNB').textContent = bnb ?? '-';
+      document.getElementById('balUSDT').textContent = usdt ?? '-';
+
+      const hint = document.getElementById('balHint');
+      if (hint) {
+        hint.style.display = hintText ? 'block' : 'none';
+        hint.textContent = hintText || '';
+      }
+    }
+
+    async function refreshBalancesUsingConnectedAccount(){
+      await apiGetMe();
+
+      if (!window.ethereum){
+        toast('MetaMask não detectado. No celular, use "Abrir no MetaMask".', 'error');
+        return null;
+      }
+
+      await ensureBsc();
+      await refreshNetBadge();
+
+      const connected = await getConnectedAccount();
+      if (!connected) {
+        toast('Conecte o MetaMask para ver o saldo real.', 'error');
+        return null;
+      }
+
+      // garante que o input espelha a conta REAL
+      const typed = (document.getElementById('walletInput').value || '').trim();
+      if (typed && isValidAddress(typed) && typed.toLowerCase() !== connected.toLowerCase()){
+        toast(`Atenção: você colou uma carteira diferente. Vou usar a conta conectada (${connected.slice(0,6)}...${connected.slice(-4)}).`, 'error');
+      }
+      setWalletInput(connected);
+
+      const contractInfo = await loadContractInfo();
+      const tokenAddress = contractInfo?.token || contractInfo?.USDT_ADDRESS || null;
+      if (!tokenAddress || !isValidAddress(tokenAddress)) throw new Error('Token USDT indisponível.');
+
+      const b = await readBalances({ walletAddress: connected, tokenAddress });
+      showBalancesBox({
+        bnb: b.bnb,
+        usdt: b.usdt,
+        hintText: 'Se BNB estiver baixo, você não consegue pagar as taxas de approve/subscribe/renew.'
+      });
+
+      return { connected, tokenAddress, balances: b };
+    }
+
     (async function init(){
       document.getElementById('btnOpenMM')?.addEventListener('click', ()=>{
         location.href = getMetaMaskDappLink();
       });
 
       await refreshNetBadge();
+
       if (window.ethereum){
-        ethereum.on?.('chainChanged', ()=>{ refreshNetBadge(); });
+        ethereum.on?.('chainChanged', async ()=>{
+          await refreshNetBadge();
+          try { await refreshBalancesUsingConnectedAccount(); } catch {}
+        });
+
+        ethereum.on?.('accountsChanged', async (accounts)=>{
+          const addr = accounts?.[0];
+          if (!addr) return;
+          const checksum = ethers.getAddress(addr);
+          setWalletInput(checksum);
+          toast('Conta alterada: ' + checksum.slice(0,6) + '...' + checksum.slice(-4));
+          try { await refreshBalancesUsingConnectedAccount(); } catch {}
+        });
       }
 
       try{
@@ -452,6 +514,14 @@
 
         await loadContractInfo();
         await refreshOnchainStatus();
+
+        // ✅ NOVO: se MetaMask já estiver conectado, espelha a conta e já dá pra ver o saldo certo
+        if (window.ethereum){
+          const connected = await getConnectedAccount();
+          if (connected) {
+            setWalletInput(connected);
+          }
+        }
       }catch(e){
         toast(e?.message || 'Não autenticado.', 'error');
       }
@@ -464,10 +534,13 @@
           return;
         }
         await ensureBsc();
-        const acc = await getSelectedAccount();
-        document.getElementById('walletInput').value = acc;
+        const acc = await connectAndGetAccount();
+        setWalletInput(acc);
         toast('Carteira conectada: ' + acc.slice(0,6) + '...' + acc.slice(-4));
         await refreshNetBadge();
+
+        // ✅ após conectar, já atualiza o saldo automaticamente
+        await refreshBalancesUsingConnectedAccount();
       }catch(err){
         toast(err?.message || 'Falha ao conectar MetaMask.', 'error');
       }
@@ -476,15 +549,18 @@
     document.getElementById('btnSave')?.addEventListener('click', async ()=>{
       try{
         await apiGetMe();
-        const wallet = document.getElementById('walletInput').value.trim();
-        if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (começa com 0x...).');
 
-        await apiSaveWallet(wallet);
+        // ✅ salva sempre a conta conectada (para evitar salvar “carteira errada”)
+        const connected = await getConnectedAccount();
+        if (!connected) throw new Error('Conecte o MetaMask para salvar a carteira correta.');
+
+        await apiSaveWallet(connected);
 
         const info = document.getElementById('savedInfo');
         info.style.display = 'block';
-        info.innerHTML = 'Carteira salva: <b>' + wallet + '</b>';
+        info.innerHTML = 'Carteira salva: <b>' + connected + '</b>';
 
+        setWalletInput(connected);
         toast('Carteira salva com sucesso.');
       }catch(err){
         toast(err?.message || 'Falha ao salvar carteira.', 'error');
@@ -493,35 +569,7 @@
 
     document.getElementById('btnCheck')?.addEventListener('click', async ()=>{
       try{
-        await apiGetMe();
-
-        if (!window.ethereum){
-          toast('MetaMask não detectado. No celular, use "Abrir no MetaMask".', 'error');
-          return;
-        }
-
-        await ensureBsc();
-        await refreshNetBadge();
-
-        const wallet = document.getElementById('walletInput').value.trim();
-        if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
-
-        const contractInfo = await loadContractInfo();
-        const tokenAddress = contractInfo?.token || contractInfo?.USDT_ADDRESS || null;
-        if (!tokenAddress || !isValidAddress(tokenAddress)) throw new Error('Token USDT indisponível.');
-
-        const b = await readBalances({ walletAddress: wallet, tokenAddress });
-
-        document.getElementById('balancesBox').style.display = 'block';
-        document.getElementById('balBNB').textContent = b.bnb;
-        document.getElementById('balUSDT').textContent = b.usdt;
-
-        const hint = document.getElementById('balHint');
-        if (hint) {
-          hint.style.display = 'block';
-          hint.textContent = 'Se BNB estiver baixo, você não consegue pagar as taxas de approve/subscribe/renew.';
-        }
-
+        await refreshBalancesUsingConnectedAccount();
         toast('Saldos atualizados.');
       }catch(err){
         toast(err?.message || 'Falha ao verificar saldos.', 'error');
@@ -551,18 +599,14 @@
         await ensureBsc();
         await refreshNetBadge();
 
-        const selected = await getSelectedAccount();
+        // ✅ sempre usa a conta conectada
+        const selected = await connectAndGetAccount();
+        setWalletInput(selected);
 
-        const wallet = document.getElementById('walletInput').value.trim();
-        if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
+        // salva no backend também
+        await apiSaveWallet(selected);
 
-        if (selected.toLowerCase() !== wallet.toLowerCase()) {
-          throw new Error('A conta ativa no MetaMask é diferente da carteira informada. Troque a conta no MetaMask.');
-        }
-
-        await apiSaveWallet(wallet);
-
-        const flow = await prepareFlow(wallet);
+        const flow = await prepareFlow(selected);
 
         const contractAddress = flow.contractAddress;
         const tokenAddress = flow.tokenAddress;
@@ -573,18 +617,22 @@
           throw new Error('Contrato/token inválidos no backend.');
         }
 
-        const bal = await readBalances({ walletAddress: wallet, tokenAddress });
+        const bal = await readBalances({ walletAddress: selected, tokenAddress });
         const usdtRaw = BigInt(bal.usdtRaw);
 
         if (usdtRaw < total) {
+          // mostra em formato humano quanto precisa vs quanto tem
+          const needHuman = ethers.formatUnits(total, bal.decimals || 18);
+          showBalancesBox({
+            bnb: bal.bnb,
+            usdt: bal.usdt,
+            hintText: `Você precisa de ~${needHuman} USDT (inclui taxa do contrato). Seu saldo atual é ${bal.usdt} USDT.`
+          });
           toast('Saldo USDT insuficiente para assinar (inclui taxa do contrato).', 'error');
-          document.getElementById('balancesBox').style.display = 'block';
-          document.getElementById('balBNB').textContent = bal.bnb;
-          document.getElementById('balUSDT').textContent = bal.usdt;
           return;
         }
 
-        const allowance = await readAllowance({ walletAddress: wallet, tokenAddress, spender: contractAddress });
+        const allowance = await readAllowance({ walletAddress: selected, tokenAddress, spender: contractAddress });
         const allow = BigInt(allowance.toString());
 
         if (allow < total) {
@@ -618,12 +666,8 @@
         await ensureBsc();
         await refreshNetBadge();
 
-        const selected = await getSelectedAccount();
-        const wallet = document.getElementById('walletInput').value.trim();
-        if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
-        if (selected.toLowerCase() !== wallet.toLowerCase()) {
-          throw new Error('A conta ativa no MetaMask é diferente da carteira informada. Troque a conta no MetaMask.');
-        }
+        const selected = await connectAndGetAccount();
+        setWalletInput(selected);
 
         const info = await assinaturaApi.getContractInfo();
         if (!info?.ok) throw new Error('Contrato indisponível no backend.');
