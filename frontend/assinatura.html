@@ -462,24 +462,32 @@
 
     // ✅ verifica saldos do endereço do input (QUALQUER carteira)
     async function refreshBalancesForInputWallet(){
-      await apiGetMe();
+  await apiGetMe();
 
-      const wallet = (document.getElementById('walletInput').value || '').trim();
-      if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
+  // ✅ usa sempre a conta ativa do MetaMask (a mesma que assina)
+  if (!window.ethereum) throw new Error('MetaMask não detectado.');
+  await ensureBsc();
+  const selected = await connectAndGetAccount(); // abre popup se precisar
 
-      const contractInfo = await loadContractInfo();
-      const tokenAddress = contractInfo?.token || contractInfo?.USDT_ADDRESS || null;
-      if (!tokenAddress || !isValidAddress(tokenAddress)) throw new Error('Token USDT indisponível.');
+  // preenche/corrige o campo para evitar confusão
+  ensureInputMatchesSelected(selected);
 
-      const b = await readBalances({ walletAddress: wallet, tokenAddress });
-      showBalancesBox({
-        bnb: b.bnb,
-        usdt: b.usdt,
-        hintText: 'Saldos lidos direto da BNB Chain (RPC público).'
-      });
+  const wallet = (document.getElementById('walletInput').value || '').trim();
+  if (!isValidAddress(wallet)) throw new Error('Carteira inválida.');
 
-      return { wallet, tokenAddress, balances: b };
-    }
+  const contractInfo = await loadContractInfo();
+  const tokenAddress = contractInfo?.token || contractInfo?.USDT_ADDRESS || null;
+  if (!tokenAddress || !isValidAddress(tokenAddress)) throw new Error('Token USDT indisponível.');
+
+  const b = await readBalances({ walletAddress: wallet, tokenAddress });
+  showBalancesBox({
+    bnb: b.bnb,
+    usdt: b.usdt,
+    hintText: 'Saldos da conta ativa no MetaMask (BNB Chain).'
+  });
+
+  return { wallet, tokenAddress, balances: b };
+}
 
     // ✅ mantém a lógica original de UX, mas garante que na hora de assinar
     // a conta do MetaMask seja a que realmente vai pagar
