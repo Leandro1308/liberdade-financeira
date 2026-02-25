@@ -6,6 +6,7 @@
   <title>Ativar assinatura</title>
   <link rel="stylesheet" href="/assets/app.css" />
 
+  <!-- ✅ Só UI: esconde infos técnicas (mantém no HTML para não quebrar o JS) -->
   <style>
     /* O bloco técnico continua existindo (para o código), mas o usuário não vê */
     #statusBox { display: none !important; }
@@ -120,6 +121,7 @@
             <div>Tx: <a id="txLink" href="#" target="_blank" rel="noreferrer">-</a></div>
           </div>
 
+          <!-- ✅ NOVO: Status “humano” (sem Mongo/On-chain) -->
           <div id="userStatusBox" class="muted" style="margin-top:12px;">
             <div class="badge" style="margin-bottom:8px;">Status da assinatura</div>
             <div>Assinatura: <b id="uiSubStatus">-</b></div>
@@ -127,6 +129,7 @@
             <div>Próxima renovação: <b id="uiDue">-</b></div>
           </div>
 
+          <!-- ✅ BLOCO TÉCNICO (mantido para não quebrar JS, mas oculto via CSS) -->
           <div id="statusBox" class="muted" style="margin-top:12px;">
             <div class="badge" style="margin-bottom:8px;">Status da sua conta</div>
             <div>Status (Mongo): <b id="accStatus">-</b></div>
@@ -194,6 +197,22 @@
       blockExplorerUrls: ['https://bscscan.com']
     };
 
+    // ✅ leitura de saldos por RPC público (não depende do MetaMask)
+    // se algum estiver fora, ele tenta o próximo
+    const BSC_PUBLIC_RPCS = [
+      "https://bsc-dataseed.binance.org/",
+      "https://bsc-dataseed1.binance.org/",
+      "https://bsc-dataseed2.binance.org/",
+      "https://bsc-dataseed3.binance.org/",
+      "https://bsc-dataseed4.binance.org/",
+    ];
+
+    function getReadProvider(){
+      // cria um provider novo e barato a cada chamada (sem estado)
+      const url = BSC_PUBLIC_RPCS[Math.floor(Math.random() * BSC_PUBLIC_RPCS.length)];
+      return new ethers.JsonRpcProvider(url);
+    }
+
     async function ensureBsc(){
       if (!window.ethereum) throw new Error('MetaMask não detectado.');
       try{
@@ -228,6 +247,23 @@
 
     function isValidAddress(v){
       return /^0x[a-fA-F0-9]{40}$/.test((v||'').trim());
+    }
+
+    function setWalletInput(addr){
+      const input = document.getElementById('walletInput');
+      if (input && addr) input.value = addr;
+    }
+
+    function showBalancesBox({ bnb, usdt, hintText }){
+      document.getElementById('balancesBox').style.display = 'block';
+      document.getElementById('balBNB').textContent = bnb ?? '-';
+      document.getElementById('balUSDT').textContent = usdt ?? '-';
+
+      const hint = document.getElementById('balHint');
+      if (hint) {
+        hint.style.display = hintText ? 'block' : 'none';
+        hint.textContent = hintText || '';
+      }
     }
 
     function setStatusUI(me){
@@ -317,7 +353,7 @@
       return api('/api/me/wallet', { method:'POST', body:{ walletAddress } });
     }
 
-    // ========= Web3 helpers (browser) =========
+    // ========= Web3 helpers =========
     const ERC20_ABI = [
       "function balanceOf(address) view returns (uint256)",
       "function allowance(address owner, address spender) view returns (uint256)",
@@ -330,12 +366,13 @@
       "function renew()"
     ];
 
+    // ✅ assinatura pelo MetaMask
     function getBrowserProvider(){
       if (!window.ethereum) throw new Error("MetaMask não detectado.");
       return new ethers.BrowserProvider(window.ethereum);
     }
 
-    // ✅ pega a conta conectada SEM abrir popup (se já estiver conectada)
+    // ✅ conta conectada (sem popup)
     async function getConnectedAccount(){
       if (!window.ethereum) return null;
       const accounts = await ethereum.request({ method:'eth_accounts' });
@@ -343,7 +380,7 @@
       return from ? ethers.getAddress(from) : null;
     }
 
-    // ✅ conecta (abre popup se precisar)
+    // ✅ conecta (popup)
     async function connectAndGetAccount(){
       const accounts = await ethereum.request({ method:'eth_requestAccounts' });
       const from = accounts?.[0];
@@ -351,13 +388,9 @@
       return ethers.getAddress(from);
     }
 
-    function setWalletInput(addr){
-      const input = document.getElementById('walletInput');
-      if (input && addr) input.value = addr;
-    }
-
+    // ✅ leitura de saldos por RPC público (funciona com qualquer carteira 0x...)
     async function readBalances({ walletAddress, tokenAddress }){
-      const provider = getBrowserProvider();
+      const provider = getReadProvider();
 
       const bnbWei = await provider.getBalance(walletAddress);
       const bnb = ethers.formatEther(bnbWei);
@@ -371,13 +404,15 @@
       return { bnb, usdt, decimals: dec, usdtRaw: usdtRaw.toString() };
     }
 
+    // ✅ leitura de allowance por RPC público
     async function readAllowance({ walletAddress, tokenAddress, spender }){
-      const provider = getBrowserProvider();
+      const provider = getReadProvider();
       const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
       const allowance = await erc20.allowance(walletAddress, spender);
       return allowance;
     }
 
+    // ✅ approve/subscribe/renew por MetaMask
     async function sendApprove({ tokenAddress, spender, amount }){
       const provider = getBrowserProvider();
       const signer = await provider.getSigner();
@@ -413,8 +448,6 @@
       }
     }
 
-    let CONTRACT = null;
-
     async function loadContractInfo(){
       const info = await assinaturaApi.getContractInfo();
       if (!info?.ok) throw new Error('Contrato indisponível no backend.');
@@ -427,56 +460,41 @@
       return flow;
     }
 
-    function showBalancesBox({ bnb, usdt, hintText }){
-      document.getElementById('balancesBox').style.display = 'block';
-      document.getElementById('balBNB').textContent = bnb ?? '-';
-      document.getElementById('balUSDT').textContent = usdt ?? '-';
-
-      const hint = document.getElementById('balHint');
-      if (hint) {
-        hint.style.display = hintText ? 'block' : 'none';
-        hint.textContent = hintText || '';
-      }
-    }
-
-    async function refreshBalancesUsingConnectedAccount(){
+    // ✅ verifica saldos do endereço do input (QUALQUER carteira)
+    async function refreshBalancesForInputWallet(){
       await apiGetMe();
 
-      if (!window.ethereum){
-        toast('MetaMask não detectado. No celular, use "Abrir no MetaMask".', 'error');
-        return null;
-      }
-
-      await ensureBsc();
-      await refreshNetBadge();
-
-      const connected = await getConnectedAccount();
-      if (!connected) {
-        toast('Conecte o MetaMask para ver o saldo real.', 'error');
-        return null;
-      }
-
-      // garante que o input espelha a conta REAL
-      const typed = (document.getElementById('walletInput').value || '').trim();
-      if (typed && isValidAddress(typed) && typed.toLowerCase() !== connected.toLowerCase()){
-        toast(`Atenção: você colou uma carteira diferente. Vou usar a conta conectada (${connected.slice(0,6)}...${connected.slice(-4)}).`, 'error');
-      }
-      setWalletInput(connected);
+      const wallet = (document.getElementById('walletInput').value || '').trim();
+      if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
 
       const contractInfo = await loadContractInfo();
       const tokenAddress = contractInfo?.token || contractInfo?.USDT_ADDRESS || null;
       if (!tokenAddress || !isValidAddress(tokenAddress)) throw new Error('Token USDT indisponível.');
 
-      const b = await readBalances({ walletAddress: connected, tokenAddress });
+      const b = await readBalances({ walletAddress: wallet, tokenAddress });
       showBalancesBox({
         bnb: b.bnb,
         usdt: b.usdt,
-        hintText: 'Se BNB estiver baixo, você não consegue pagar as taxas de approve/subscribe/renew.'
+        hintText: 'Saldos lidos direto da BNB Chain (RPC público).'
       });
 
-      return { connected, tokenAddress, balances: b };
+      return { wallet, tokenAddress, balances: b };
     }
 
+    // ✅ mantém a lógica original de UX, mas garante que na hora de assinar
+    // a conta do MetaMask seja a que realmente vai pagar
+    function ensureInputMatchesSelected(selected){
+      const typed = (document.getElementById('walletInput').value || '').trim();
+      if (isValidAddress(typed) && typed.toLowerCase() !== selected.toLowerCase()){
+        // não quebra: avisa e corrige
+        toast('A conta ativa no MetaMask é diferente da carteira do campo. Vou usar a conta ativa para assinar.', 'error');
+        setWalletInput(selected);
+      } else if (!typed) {
+        setWalletInput(selected);
+      }
+    }
+
+    // ========= init =========
     (async function init(){
       document.getElementById('btnOpenMM')?.addEventListener('click', ()=>{
         location.href = getMetaMaskDappLink();
@@ -487,16 +505,14 @@
       if (window.ethereum){
         ethereum.on?.('chainChanged', async ()=>{
           await refreshNetBadge();
-          try { await refreshBalancesUsingConnectedAccount(); } catch {}
         });
 
         ethereum.on?.('accountsChanged', async (accounts)=>{
           const addr = accounts?.[0];
           if (!addr) return;
           const checksum = ethers.getAddress(addr);
-          setWalletInput(checksum);
+          ensureInputMatchesSelected(checksum);
           toast('Conta alterada: ' + checksum.slice(0,6) + '...' + checksum.slice(-4));
-          try { await refreshBalancesUsingConnectedAccount(); } catch {}
         });
       }
 
@@ -515,12 +531,10 @@
         await loadContractInfo();
         await refreshOnchainStatus();
 
-        // ✅ NOVO: se MetaMask já estiver conectado, espelha a conta e já dá pra ver o saldo certo
-        if (window.ethereum){
-          const connected = await getConnectedAccount();
-          if (connected) {
-            setWalletInput(connected);
-          }
+        // ✅ se já estiver conectado, tenta espelhar a conta (sem forçar)
+        const connected = await getConnectedAccount();
+        if (connected && !document.getElementById('walletInput').value.trim()){
+          setWalletInput(connected);
         }
       }catch(e){
         toast(e?.message || 'Não autenticado.', 'error');
@@ -535,12 +549,9 @@
         }
         await ensureBsc();
         const acc = await connectAndGetAccount();
-        setWalletInput(acc);
+        ensureInputMatchesSelected(acc);
         toast('Carteira conectada: ' + acc.slice(0,6) + '...' + acc.slice(-4));
         await refreshNetBadge();
-
-        // ✅ após conectar, já atualiza o saldo automaticamente
-        await refreshBalancesUsingConnectedAccount();
       }catch(err){
         toast(err?.message || 'Falha ao conectar MetaMask.', 'error');
       }
@@ -550,26 +561,26 @@
       try{
         await apiGetMe();
 
-        // ✅ salva sempre a conta conectada (para evitar salvar “carteira errada”)
-        const connected = await getConnectedAccount();
-        if (!connected) throw new Error('Conecte o MetaMask para salvar a carteira correta.');
+        // ✅ salvar o que está no campo (mantém seu comportamento atual)
+        const wallet = (document.getElementById('walletInput').value || '').trim();
+        if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (começa com 0x...).');
 
-        await apiSaveWallet(connected);
+        await apiSaveWallet(wallet);
 
         const info = document.getElementById('savedInfo');
         info.style.display = 'block';
-        info.innerHTML = 'Carteira salva: <b>' + connected + '</b>';
+        info.innerHTML = 'Carteira salva: <b>' + wallet + '</b>';
 
-        setWalletInput(connected);
         toast('Carteira salva com sucesso.');
       }catch(err){
         toast(err?.message || 'Falha ao salvar carteira.', 'error');
       }
     });
 
+    // ✅ Verificar saldos: agora funciona para QUALQUER carteira colada no campo
     document.getElementById('btnCheck')?.addEventListener('click', async ()=>{
       try{
-        await refreshBalancesUsingConnectedAccount();
+        await refreshBalancesForInputWallet();
         toast('Saldos atualizados.');
       }catch(err){
         toast(err?.message || 'Falha ao verificar saldos.', 'error');
@@ -599,14 +610,18 @@
         await ensureBsc();
         await refreshNetBadge();
 
-        // ✅ sempre usa a conta conectada
+        // ✅ sempre assina com a conta ativa no MetaMask
         const selected = await connectAndGetAccount();
-        setWalletInput(selected);
+        ensureInputMatchesSelected(selected);
 
-        // salva no backend também
-        await apiSaveWallet(selected);
+        // ✅ usa a carteira do campo como "carteira da conta" no backend,
+        // mas garantimos que ela está igual ao selected (ou corrigimos)
+        const wallet = (document.getElementById('walletInput').value || '').trim();
+        if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
 
-        const flow = await prepareFlow(selected);
+        await apiSaveWallet(wallet);
+
+        const flow = await prepareFlow(wallet);
 
         const contractAddress = flow.contractAddress;
         const tokenAddress = flow.tokenAddress;
@@ -617,11 +632,11 @@
           throw new Error('Contrato/token inválidos no backend.');
         }
 
-        const bal = await readBalances({ walletAddress: selected, tokenAddress });
+        // ✅ checagem de saldo via RPC público (não depende MetaMask)
+        const bal = await readBalances({ walletAddress: wallet, tokenAddress });
         const usdtRaw = BigInt(bal.usdtRaw);
 
         if (usdtRaw < total) {
-          // mostra em formato humano quanto precisa vs quanto tem
           const needHuman = ethers.formatUnits(total, bal.decimals || 18);
           showBalancesBox({
             bnb: bal.bnb,
@@ -632,7 +647,8 @@
           return;
         }
 
-        const allowance = await readAllowance({ walletAddress: selected, tokenAddress, spender: contractAddress });
+        // ✅ allowance via RPC público
+        const allowance = await readAllowance({ walletAddress: wallet, tokenAddress, spender: contractAddress });
         const allow = BigInt(allowance.toString());
 
         if (allow < total) {
@@ -667,7 +683,7 @@
         await refreshNetBadge();
 
         const selected = await connectAndGetAccount();
-        setWalletInput(selected);
+        ensureInputMatchesSelected(selected);
 
         const info = await assinaturaApi.getContractInfo();
         if (!info?.ok) throw new Error('Contrato indisponível no backend.');
