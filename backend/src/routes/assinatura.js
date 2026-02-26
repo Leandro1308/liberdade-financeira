@@ -36,8 +36,7 @@ async function web3Unavailable(res, extra = null) {
   return res.status(503).json({
     ok: false,
     error: "WEB3_UNAVAILABLE",
-    message:
-      "Rede blockchain indisponível no momento. Tente novamente em instantes.",
+    message: "Rede blockchain indisponível no momento. Tente novamente em instantes.",
     details: extra || state?.error || null,
   });
 }
@@ -135,12 +134,7 @@ router.get("/subscription/status", requireAuth, async (req, res) => {
       return res.json({
         ok: true,
         walletAddress: null,
-        onchain: {
-          active: false,
-          due: null,
-          nextDueAt: null,
-          nextDueAtISO: null,
-        },
+        onchain: { active: false, due: null, nextDueAt: null, nextDueAtISO: null },
       });
     }
 
@@ -224,8 +218,8 @@ router.get("/subscription/status", requireAuth, async (req, res) => {
  * ✅ 4.1) SYNC ON-CHAIN -> Mongo
  * POST /api/assinatura/subscription/sync
  * ---------------------------------------------------------
- * Lê (isActive/nextDueAt) e atualiza req.user.subscription no Mongo,
- * para o /api/me refletir "active" imediatamente (sem worker).
+ * Lê isActive/nextDueAt e atualiza subscription no Mongo
+ * para o /api/me refletir "active" sem worker.
  */
 router.post("/subscription/sync", requireAuth, async (req, res) => {
   try {
@@ -233,7 +227,11 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
 
     let userWalletRaw = (req.user.walletAddress || "").trim();
     if (!userWalletRaw) {
-      return res.status(400).json({ ok: false, error: "SALVE_SUA_CARTEIRA" });
+      return res.status(400).json({
+        ok: false,
+        error: "SALVE_SUA_CARTEIRA",
+        message: "Salve sua carteira antes de sincronizar.",
+      });
     }
 
     let userWallet;
@@ -254,11 +252,9 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
 
     const c = new ethers.Contract(contractAddress, STATUS_ABI, provider);
 
-    // tolerante
     const safeCall = async (fn, fallback = null) => {
       try {
-        const v = await c[fn](userWallet);
-        return v;
+        return await c[fn](userWallet);
       } catch {
         return fallback;
       }
@@ -283,21 +279,19 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
       }
     }
 
-    // Se não conseguimos ler active, não alteramos nada (evita “desativar” por RPC falha)
+    // Se não conseguimos ler active, não alteramos nada (evita desativar por falha RPC)
     if (active === null) {
       return res.json({
         ok: true,
         synced: false,
         reason: "ONCHAIN_UNAVAILABLE",
+        walletAddress: userWallet,
+        contractAddress,
         onchain: { active: null, nextDueAtISO },
       });
     }
 
-    // Atualiza Mongo apenas com dados confiáveis
-    const update = {
-      walletAddress: userWallet, // mantém checksum
-    };
-
+    // Atualiza Mongo sem destruir campos existentes
     const sub = req.user.subscription || {};
     const newSub = {
       ...sub,
@@ -306,18 +300,25 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
         typeof sub.renovacaoAutomatica === "boolean" ? sub.renovacaoAutomatica : true,
     };
 
-    // Se temos próxima data, colocamos em currentPeriodEnd
     if (nextDueAtISO) {
-      newSub.currentPeriodEnd = nextDueAtISO;
+      newSub.currentPeriodEnd = nextDueAtISO; // mongoose converte p/ Date
     }
 
-    update.subscription = newSub;
-
-    await User.updateOne({ _id: userId }, { $set: update });
+    await User.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          walletAddress: userWallet,
+          subscription: newSub,
+        },
+      }
+    );
 
     return res.json({
       ok: true,
       synced: true,
+      walletAddress: userWallet,
+      contractAddress,
       subscription: newSub,
       onchain: { active, nextDueAtISO },
     });
@@ -342,8 +343,7 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
  */
 router.post("/subscribe", requireAuth, async (req, res) => {
   const parsed = SubscribeSchema.safeParse(req.body);
-  if (!parsed.success)
-    return res.status(400).json({ ok: false, error: "INVALID_DATA" });
+  if (!parsed.success) return res.status(400).json({ ok: false, error: "INVALID_DATA" });
 
   const userId = req.user._id.toString();
 
@@ -447,8 +447,7 @@ router.post("/subscribe", requireAuth, async (req, res) => {
  */
 router.post("/subscription/validateTx", requireAuth, async (req, res) => {
   const parsed = ValidateTxSchema.safeParse(req.body);
-  if (!parsed.success)
-    return res.status(400).json({ ok: false, error: "INVALID_DATA" });
+  if (!parsed.success) return res.status(400).json({ ok: false, error: "INVALID_DATA" });
 
   const txHash = parsed.data.txHash.trim();
   const provider = getProvider();
