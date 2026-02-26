@@ -1,4 +1,3 @@
-// frontend/assets/api.js
 export const API_BASE = `${location.origin}`;
 
 const TOKEN_KEY = "lf_token";
@@ -118,9 +117,10 @@ export const assinaturaApi = {
     return api("/api/assinatura/subscription/status");
   },
 
-  // ✅ NOVO: SYNC on-chain -> Mongo (para /api/me refletir "active")
+  // ✅ NOVO: SYNC on-chain -> Mongo
+  // IMPORTANTE: usa Bearer token automaticamente via api()
   syncSubscription() {
-    return api("/api/assinatura/subscription/sync", { method: "POST", body: {} });
+    return api("/api/assinatura/subscription/sync", { method: "POST" });
   },
 
   // Prepara dados para o frontend executar approve + subscribe(referrer)
