@@ -598,15 +598,22 @@
     });
 
     document.getElementById('btnRefresh')?.addEventListener('click', async ()=>{
-      try{
-        const me = await apiGetMe();
-        setStatusUI(me);
-        await refreshOnchainStatus();
-        toast('Status atualizado.');
-      }catch(e){
-        toast(e?.message || 'Falha ao atualizar status.', 'error');
-      }
-    });
+  try{
+    // ✅ Tenta sincronizar on-chain -> Mongo (se RPC estiver ok)
+    await assinaturaApi.syncSubscription().catch(()=>null);
+
+    // ✅ Agora sim reflete no /api/me
+    const me = await apiGetMe();
+    setStatusUI(me);
+
+    // ✅ (opcional) atualiza também o painel técnico on-chain
+    await refreshOnchainStatus();
+
+    toast('Status atualizado.');
+  }catch(e){
+    toast(e?.message || 'Falha ao atualizar status.', 'error');
+  }
+});
 
     // ✅ SUBSCRIBE (100% automático)
     document.getElementById('btnSubscribe')?.addEventListener('click', async ()=>{
