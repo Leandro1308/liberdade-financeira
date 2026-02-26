@@ -5,6 +5,8 @@ import { ethers } from "ethers";
 
 import { requireAuth } from "../middleware/auth.js";
 import { User } from "../models/User.js";
+import { getOnchainSubscriptionStatus } from "../services/subscriptionOnchain.js";
+import { env } from "../config/env.js";
 
 const router = Router();
 
@@ -15,15 +17,41 @@ router.get("/", requireAuth, async (req, res) => {
     affiliateCode: req.user.affiliateCode,
     referrerCode: req.user.referrerCode,
     walletAddress: req.user.walletAddress || null,
-    subscription: req.user.subscription,
+    subscription: req.user.subscription, // legado (Mongo), mantém
   };
 
-  // ✅ mantém o formato atual (user:{...})
-  // ✅ e espelha no topo para não quebrar telas antigas
-  return res.json({
-    user,
+  let subscriptionOnchain = null;
+
+  if (user.walletAddress) {
+    subscriptionOnchain = await getOnchainSubscriptionStatus(user.walletAddress);
+  } else {
+    subscriptionOnchain = {
+      ok: false,
+      active: false,
+      walletAddress: null,
+      chainId: Number(env.BSC_CHAIN_ID || 56),
+      contract: env.SUBSCRIPTION_CONTRACT,
+      checkedAt: new Date().toISOString(),
+      error: "WALLET_NOT_SET",
+    };
+  }
+
+  const effectiveActive = Boolean(subscriptionOnchain?.ok && subscriptionOnchain?.active);
+
+  const payload = {
+    user: {
+      ...user,
+      subscriptionOnchain,
+      subscriptionEffective: { active: effectiveActive, source: "onchain" },
+    },
+
+    // ✅ mantém espelho no topo para não quebrar telas antigas
     ...user,
-  });
+    subscriptionOnchain,
+    subscriptionEffective: { active: effectiveActive, source: "onchain" },
+  };
+
+  return res.json(payload);
 });
 
 const WalletSchema = z.object({
