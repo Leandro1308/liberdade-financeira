@@ -1,3 +1,4 @@
+// frontend/assets/api.js
 export const API_BASE = `${location.origin}`;
 
 const TOKEN_KEY = "lf_token";
@@ -115,6 +116,11 @@ export const assinaturaApi = {
   // Status on-chain (active/due/nextDueAt)
   getOnchainStatus() {
     return api("/api/assinatura/subscription/status");
+  },
+
+  // ✅ NOVO: SYNC on-chain -> Mongo (para /api/me refletir "active")
+  syncSubscription() {
+    return api("/api/assinatura/subscription/sync", { method: "POST", body: {} });
   },
 
   // Prepara dados para o frontend executar approve + subscribe(referrer)
