@@ -215,11 +215,12 @@ router.get("/subscription/status", requireAuth, async (req, res) => {
 
 /**
  * ---------------------------------------------------------
- * ✅ 4.1) SYNC ON-CHAIN -> Mongo
+ * ✅ 4.1) SYNC ON-CHAIN -> Mongo (ROBUSTO)
  * POST /api/assinatura/subscription/sync
  * ---------------------------------------------------------
- * Lê isActive/nextDueAt e atualiza subscription no Mongo
- * para o /api/me refletir "active" sem worker.
+ * - Lê isActive/isDue/nextDueAt
+ * - Atualiza subscription no Mongo SEM depender de worker
+ * - NUNCA “desativa” se o RPC falhar (active === null)
  */
 router.post("/subscription/sync", requireAuth, async (req, res) => {
   try {
@@ -227,11 +228,7 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
 
     let userWalletRaw = (req.user.walletAddress || "").trim();
     if (!userWalletRaw) {
-      return res.status(400).json({
-        ok: false,
-        error: "SALVE_SUA_CARTEIRA",
-        message: "Salve sua carteira antes de sincronizar.",
-      });
+      return res.status(400).json({ ok: false, error: "SALVE_SUA_CARTEIRA" });
     }
 
     let userWallet;
@@ -247,6 +244,7 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
 
     const STATUS_ABI = [
       "function isActive(address user) view returns (bool)",
+      "function isDue(address user) view returns (bool)",
       "function nextDueAt(address user) view returns (uint256)",
     ];
 
@@ -254,32 +252,42 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
 
     const safeCall = async (fn, fallback = null) => {
       try {
-        return await c[fn](userWallet);
+        const v = await c[fn](userWallet);
+        return v;
       } catch {
         return fallback;
       }
     };
 
-    const [activeRaw, nextDueAtRaw] = await Promise.all([
+    const [activeRaw, dueRaw, nextDueAtRaw] = await Promise.all([
       safeCall("isActive", null),
+      safeCall("isDue", null),
       safeCall("nextDueAt", null),
     ]);
 
     const active = activeRaw === null ? null : Boolean(activeRaw);
+    const due = dueRaw === null ? null : Boolean(dueRaw);
 
+    let nextDueAtSec = null;
     let nextDueAtISO = null;
+    let nextDueAtDate = null;
+
     if (nextDueAtRaw !== null && nextDueAtRaw !== undefined) {
       try {
         const sec = Number(nextDueAtRaw.toString());
         if (Number.isFinite(sec) && sec > 0) {
+          nextDueAtSec = sec;
           nextDueAtISO = new Date(sec * 1000).toISOString();
+          nextDueAtDate = new Date(sec * 1000);
         }
       } catch {
+        nextDueAtSec = null;
         nextDueAtISO = null;
+        nextDueAtDate = null;
       }
     }
 
-    // Se não conseguimos ler active, não alteramos nada (evita desativar por falha RPC)
+    // Se não conseguimos ler active, não alteramos status (evita “desativar” por falha do RPC)
     if (active === null) {
       return res.json({
         ok: true,
@@ -287,21 +295,21 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
         reason: "ONCHAIN_UNAVAILABLE",
         walletAddress: userWallet,
         contractAddress,
-        onchain: { active: null, nextDueAtISO },
+        onchain: { active: null, due, nextDueAt: nextDueAtSec, nextDueAtISO },
       });
     }
 
-    // Atualiza Mongo sem destruir campos existentes
     const sub = req.user.subscription || {};
     const newSub = {
       ...sub,
-      status: active ? "active" : "inactive",
+      status: active ? (due ? "past_due" : "active") : "inactive",
       renovacaoAutomatica:
         typeof sub.renovacaoAutomatica === "boolean" ? sub.renovacaoAutomatica : true,
     };
 
-    if (nextDueAtISO) {
-      newSub.currentPeriodEnd = nextDueAtISO; // mongoose converte p/ Date
+    // Se temos próxima data, colocamos como Date (seu schema é Date)
+    if (nextDueAtDate) {
+      newSub.currentPeriodEnd = nextDueAtDate;
     }
 
     await User.updateOne(
@@ -317,10 +325,10 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
     return res.json({
       ok: true,
       synced: true,
+      subscription: newSub,
       walletAddress: userWallet,
       contractAddress,
-      subscription: newSub,
-      onchain: { active, nextDueAtISO },
+      onchain: { active, due, nextDueAt: nextDueAtSec, nextDueAtISO },
     });
   } catch (e) {
     const code = e?.code || e?.message;
