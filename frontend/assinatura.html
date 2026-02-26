@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="/assets/app.css" />
 
   <style>
-    /* O bloco técnico continua existindo (para o código), mas o usuário não vê */
     #statusBox { display: none !important; }
   </style>
 </head>
@@ -401,39 +400,38 @@
       return allowance;
     }
 
-    // ✅ envia approve e retorna hash
-    async function sendApprove({ tokenAddress, spender, amount }){
+    // ✅ envia e espera confirmação
+    async function sendApproveAndWait({ tokenAddress, spender, amount }){
       const provider = getBrowserProvider();
       const signer = await provider.getSigner();
       const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
       const tx = await erc20.approve(spender, amount);
+      showTx(tx.hash);
+      toast('Approve enviado. Aguardando confirmação...');
+      await tx.wait();
       return tx.hash;
     }
 
-    // ✅ subscribe e retorna hash
-    async function sendSubscribe({ contractAddress, referrer }){
+    async function sendSubscribeAndWait({ contractAddress, referrer }){
       const provider = getBrowserProvider();
       const signer = await provider.getSigner();
       const c = new ethers.Contract(contractAddress, SUBSCRIBE_ABI, signer);
       const tx = await c.subscribe(referrer);
+      showTx(tx.hash);
+      toast('Subscribe enviado. Aguardando confirmação...');
+      await tx.wait();
       return tx.hash;
     }
 
-    // ✅ renew e retorna hash
-    async function sendRenew({ contractAddress }){
+    async function sendRenewAndWait({ contractAddress }){
       const provider = getBrowserProvider();
       const signer = await provider.getSigner();
       const c = new ethers.Contract(contractAddress, SUBSCRIBE_ABI, signer);
       const tx = await c.renew();
+      showTx(tx.hash);
+      toast('Renew enviado. Aguardando confirmação...');
+      await tx.wait();
       return tx.hash;
-    }
-
-    // ✅ espera confirmação (1 bloco) via provider do MetaMask
-    async function waitConfirm(txHash){
-      const provider = getBrowserProvider();
-      // confirmations=1
-      await provider.waitForTransaction(txHash, 1);
-      return true;
     }
 
     async function refreshOnchainStatus(){
@@ -459,16 +457,15 @@
       return flow;
     }
 
-    // ✅ SYNC on-chain -> Mongo -> UI
-    async function syncAndRefresh(){
-      // 1) sync grava Mongo
+    async function syncAndRefreshUI(){
+      // 1) sync (on-chain -> mongo)
       const sync = await assinaturaApi.syncSubscription().catch(()=>null);
 
-      // 2) lê /me (Mongo)
+      // 2) lê /api/me (mongo) e atualiza UI
       const me = await apiGetMe();
       setStatusUI(me);
 
-      // 3) lê status on-chain (só informativo)
+      // 3) lê on-chain (visual)
       await refreshOnchainStatus();
 
       return { sync, me };
@@ -545,12 +542,15 @@
         }
 
         await loadContractInfo();
-        await refreshOnchainStatus();
+        const on = await refreshOnchainStatus();
 
-        // ✅ tentamos sincronizar logo ao abrir (resolve exatamente seu caso)
-        await assinaturaApi.syncSubscription().catch(()=>null);
-        const me2 = await apiGetMe();
-        setStatusUI(me2);
+        // ✅ AUTO-CORREÇÃO: se on-chain está active e Mongo está inactive, faz sync sozinho
+        const sub = me?.user?.subscription || me?.subscription || {};
+        if (on?.onchain?.active === true && (sub?.status || 'inactive') !== 'active') {
+          toast('Assinatura ativa na blockchain. Sincronizando com o sistema...');
+          await syncAndRefreshUI();
+          toast('Sincronizado com sucesso.');
+        }
 
         const connected = await getConnectedAccount();
         if (connected && !document.getElementById('walletInput').value.trim()){
@@ -580,7 +580,6 @@
     document.getElementById('btnSave')?.addEventListener('click', async ()=>{
       try{
         await apiGetMe();
-
         const wallet = (document.getElementById('walletInput').value || '').trim();
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (começa com 0x...).');
 
@@ -605,10 +604,10 @@
       }
     });
 
-    // ✅ Atualizar status agora faz: SYNC -> /me -> onchain
+    // ✅ Atualizar status AGORA faz sync também (automático)
     document.getElementById('btnRefresh')?.addEventListener('click', async ()=>{
       try{
-        await syncAndRefresh();
+        await syncAndRefreshUI();
         toast('Status atualizado.');
       }catch(e){
         toast(e?.message || 'Falha ao atualizar status.', 'error');
@@ -634,16 +633,6 @@
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
 
         await apiSaveWallet(wallet);
-
-        // ✅ Se já está ativo no contrato, não tenta subscribe de novo:
-        // faz sync e pronto.
-        const on = await assinaturaApi.getOnchainStatus().catch(()=>null);
-        if (on?.onchain?.active === true){
-          toast('Sua assinatura já está ativa. Sincronizando painel...');
-          await syncAndRefresh();
-          toast('Painel sincronizado. Assinatura ativa.');
-          return;
-        }
 
         const flow = await prepareFlow(wallet);
 
@@ -675,47 +664,27 @@
 
         if (allow < total) {
           toast('Confirme a autorização (approve) no MetaMask...');
-          const h1 = await sendApprove({ tokenAddress, spender: contractAddress, amount: total });
-          showTx(h1);
-          toast('Approve enviado. Aguarde confirmar...');
-          await waitConfirm(h1);
-          toast('Approve confirmado. Agora confirme a assinatura (subscribe)...');
+          await sendApproveAndWait({ tokenAddress, spender: contractAddress, amount: total });
         } else {
           toast('Approve já está OK. Indo para assinatura (subscribe)...');
         }
 
-        const h2 = await sendSubscribe({ contractAddress, referrer });
-        showTx(h2);
-        toast('Subscribe enviado. Aguardando confirmar na rede...');
+        // ✅ subscribe + espera confirmar
+        await sendSubscribeAndWait({ contractAddress, referrer });
 
-        // ✅ aguarda confirmação e sincroniza automaticamente
-        await waitConfirm(h2);
-        toast('Subscribe confirmado. Sincronizando painel...');
-        await syncAndRefresh();
+        // ✅ AUTOMÁTICO: sync on-chain -> mongo -> UI
+        toast('Confirmado! Sincronizando com o sistema...');
+        await syncAndRefreshUI();
 
-        const meAfter = await apiGetMe();
-        const sub = meAfter?.user?.subscription || meAfter?.subscription || {};
-        if (sub?.status === 'active'){
-          toast('Assinatura ATIVADA com sucesso!');
+        const me = await apiGetMe();
+        const sub = me?.user?.subscription || me?.subscription || {};
+        if ((sub?.status || 'inactive') === 'active') {
+          toast('Assinatura ativada com sucesso!');
         } else {
-          toast('Transação confirmada, mas ainda não sincronizou. Clique em "Atualizar status".', 'error');
+          toast('Transação confirmada, mas o sistema ainda não refletiu como ativo. Clique em "Atualizar status".', 'error');
         }
       }catch(err){
-        const msg = err?.message || 'Não foi possível ativar a assinatura.';
-
-        // ✅ Se for "ALREADY_ACTIVE", só sincroniza e pronto
-        if (String(msg).includes('ALREADY_ACTIVE')){
-          toast('Assinatura já está ativa no contrato. Sincronizando painel...');
-          try{
-            await syncAndRefresh();
-            toast('Painel sincronizado. Assinatura ativa.');
-          }catch(e){
-            toast('Ativa no contrato, mas falhou o sync. Clique em "Atualizar status".', 'error');
-          }
-          return;
-        }
-
-        toast(msg, 'error');
+        toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
       }
     });
 
@@ -744,21 +713,12 @@
         if (!caddr || !isValidAddress(caddr)) throw new Error('Endereço do contrato inválido.');
 
         toast('Confirme a renovação (renew) no MetaMask...');
-        const h = await sendRenew({ contractAddress: caddr });
-        showTx(h);
-        toast('Renew enviado. Aguardando confirmar na rede...');
+        await sendRenewAndWait({ contractAddress: caddr });
 
-        await waitConfirm(h);
-        toast('Renew confirmado. Sincronizando painel...');
-        await syncAndRefresh();
+        toast('Confirmado! Sincronizando com o sistema...');
+        await syncAndRefreshUI();
 
-        const meAfter = await apiGetMe();
-        const sub = meAfter?.user?.subscription || meAfter?.subscription || {};
-        if (sub?.status === 'active'){
-          toast('Renovação sincronizada com sucesso!');
-        } else {
-          toast('Renovação confirmada, mas ainda não refletiu. Clique em "Atualizar status".', 'error');
-        }
+        toast('Renovação processada.');
       }catch(err){
         toast(err?.message || 'Falha ao renovar.', 'error');
       }
