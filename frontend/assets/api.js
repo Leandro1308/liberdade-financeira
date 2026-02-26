@@ -91,7 +91,7 @@ export async function api(path, { method = "GET", token = null, body = null } = 
 }
 
 /* =========================================================
-   ✅ Helpers para assinatura on-chain (Opção A)
+   ✅ Helpers (opcionais) para assinatura on-chain (Opção A)
    ========================================================= */
 
 export const assinaturaApi = {
@@ -111,9 +111,9 @@ export const assinaturaApi = {
     return api("/api/assinatura/subscription/status");
   },
 
-  // ✅ NOVO: sincroniza ON-CHAIN -> Mongo
+  // ✅ NOVO: SYNC on-chain -> Mongo
   syncSubscription() {
-    return api("/api/assinatura/subscription/sync", { method: "POST", body: {} });
+    return api("/api/assinatura/subscription/sync", { method: "POST" });
   },
 
   prepareSubscribe({ walletAddress = null, referrerCode = null } = {}) {
