@@ -80,7 +80,6 @@ export async function api(path, { method = "GET", token = null, body = null } = 
     : await res.text().catch(() => "");
 
   if (!res.ok) {
-    // prioriza mensagem do backend (se vier)
     const msg =
       (data && typeof data === "object" && (data.message || data.error)) ||
       (typeof data === "string" && data) ||
@@ -92,38 +91,31 @@ export async function api(path, { method = "GET", token = null, body = null } = 
 }
 
 /* =========================================================
-   ✅ Helpers (opcionais) para assinatura on-chain (Opção A)
-   - Não interferem no restante do site
+   ✅ Helpers para assinatura on-chain (Opção A)
    ========================================================= */
 
 export const assinaturaApi = {
-  // Mantém compatibilidade com o endpoint antigo
   getParams() {
     return api("/api/assinatura/params");
   },
 
-  // Novo (alias “profissional”)
   getContractInfo() {
     return api("/api/assinatura/contract/info");
   },
 
-  // Status “interno” (Mongo) — mantém seu fluxo atual
   getMongoStatus() {
     return api("/api/assinatura/status");
   },
 
-  // Status on-chain (active/due/nextDueAt)
   getOnchainStatus() {
     return api("/api/assinatura/subscription/status");
   },
 
-  // ✅ NOVO: SYNC on-chain -> Mongo
-  // IMPORTANTE: usa Bearer token automaticamente via api()
+  // ✅ NOVO: sincroniza ON-CHAIN -> Mongo
   syncSubscription() {
-    return api("/api/assinatura/subscription/sync", { method: "POST" });
+    return api("/api/assinatura/subscription/sync", { method: "POST", body: {} });
   },
 
-  // Prepara dados para o frontend executar approve + subscribe(referrer)
   prepareSubscribe({ walletAddress = null, referrerCode = null } = {}) {
     return api("/api/assinatura/subscribe", {
       method: "POST",
@@ -131,7 +123,6 @@ export const assinaturaApi = {
     });
   },
 
-  // (Opcional) valida tx hash no backend
   validateTx({ txHash, walletAddress = null } = {}) {
     return api("/api/assinatura/subscription/validateTx", {
       method: "POST",
