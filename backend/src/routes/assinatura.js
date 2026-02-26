@@ -36,7 +36,8 @@ async function web3Unavailable(res, extra = null) {
   return res.status(503).json({
     ok: false,
     error: "WEB3_UNAVAILABLE",
-    message: "Rede blockchain indisponível no momento. Tente novamente em instantes.",
+    message:
+      "Rede blockchain indisponível no momento. Tente novamente em instantes.",
     details: extra || state?.error || null,
   });
 }
@@ -134,7 +135,12 @@ router.get("/subscription/status", requireAuth, async (req, res) => {
       return res.json({
         ok: true,
         walletAddress: null,
-        onchain: { active: false, due: null, nextDueAt: null, nextDueAtISO: null },
+        onchain: {
+          active: false,
+          due: null,
+          nextDueAt: null,
+          nextDueAtISO: null,
+        },
       });
     }
 
@@ -215,11 +221,11 @@ router.get("/subscription/status", requireAuth, async (req, res) => {
 
 /**
  * ---------------------------------------------------------
- * ✅ 4.1) NOVO: SYNC ON-CHAIN -> Mongo
+ * ✅ 4.1) SYNC ON-CHAIN -> Mongo
  * POST /api/assinatura/subscription/sync
  * ---------------------------------------------------------
  * Lê (isActive/nextDueAt) e atualiza req.user.subscription no Mongo,
- * para o /api/me refletir "active" sem worker.
+ * para o /api/me refletir "active" imediatamente (sem worker).
  */
 router.post("/subscription/sync", requireAuth, async (req, res) => {
   try {
@@ -289,17 +295,13 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
 
     // Atualiza Mongo apenas com dados confiáveis
     const update = {
-      // mantém checksum
-      walletAddress: userWallet,
+      walletAddress: userWallet, // mantém checksum
     };
 
-    // Ajuste para o seu modelo atual: req.user.subscription existe
-    // Vamos atualizar campos comuns sem destruir outros.
     const sub = req.user.subscription || {};
     const newSub = {
       ...sub,
       status: active ? "active" : "inactive",
-      // mantém o padrão de renovação automática já usado no seu sistema
       renovacaoAutomatica:
         typeof sub.renovacaoAutomatica === "boolean" ? sub.renovacaoAutomatica : true,
     };
@@ -340,7 +342,8 @@ router.post("/subscription/sync", requireAuth, async (req, res) => {
  */
 router.post("/subscribe", requireAuth, async (req, res) => {
   const parsed = SubscribeSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ ok: false, error: "INVALID_DATA" });
+  if (!parsed.success)
+    return res.status(400).json({ ok: false, error: "INVALID_DATA" });
 
   const userId = req.user._id.toString();
 
@@ -444,7 +447,8 @@ router.post("/subscribe", requireAuth, async (req, res) => {
  */
 router.post("/subscription/validateTx", requireAuth, async (req, res) => {
   const parsed = ValidateTxSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ ok: false, error: "INVALID_DATA" });
+  if (!parsed.success)
+    return res.status(400).json({ ok: false, error: "INVALID_DATA" });
 
   const txHash = parsed.data.txHash.trim();
   const provider = getProvider();
