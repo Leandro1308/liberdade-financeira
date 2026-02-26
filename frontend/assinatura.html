@@ -121,7 +121,7 @@
             <div>Tx: <a id="txLink" href="#" target="_blank" rel="noreferrer">-</a></div>
           </div>
 
-          <!-- ✅ NOVO: Status “humano” (sem Mongo/On-chain) -->
+          <!-- ✅ Status “humano” -->
           <div id="userStatusBox" class="muted" style="margin-top:12px;">
             <div class="badge" style="margin-bottom:8px;">Status da assinatura</div>
             <div>Assinatura: <b id="uiSubStatus">-</b></div>
@@ -198,7 +198,6 @@
     };
 
     // ✅ leitura de saldos por RPC público (não depende do MetaMask)
-    // se algum estiver fora, ele tenta o próximo
     const BSC_PUBLIC_RPCS = [
       "https://bsc-dataseed.binance.org/",
       "https://bsc-dataseed1.binance.org/",
@@ -208,7 +207,6 @@
     ];
 
     function getReadProvider(){
-      // cria um provider novo e barato a cada chamada (sem estado)
       const url = BSC_PUBLIC_RPCS[Math.floor(Math.random() * BSC_PUBLIC_RPCS.length)];
       return new ethers.JsonRpcProvider(url);
     }
@@ -412,29 +410,26 @@
       return allowance;
     }
 
-    // ✅ approve/subscribe/renew por MetaMask
-    async function sendApprove({ tokenAddress, spender, amount }){
+    // ✅ approve/subscribe/renew por MetaMask (agora retornam txResponse)
+    async function sendApproveTx({ tokenAddress, spender, amount }){
       const provider = getBrowserProvider();
       const signer = await provider.getSigner();
       const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
-      const tx = await erc20.approve(spender, amount);
-      return tx.hash;
+      return erc20.approve(spender, amount);
     }
 
-    async function sendSubscribe({ contractAddress, referrer }){
+    async function sendSubscribeTx({ contractAddress, referrer }){
       const provider = getBrowserProvider();
       const signer = await provider.getSigner();
       const c = new ethers.Contract(contractAddress, SUBSCRIBE_ABI, signer);
-      const tx = await c.subscribe(referrer);
-      return tx.hash;
+      return c.subscribe(referrer);
     }
 
-    async function sendRenew({ contractAddress }){
+    async function sendRenewTx({ contractAddress }){
       const provider = getBrowserProvider();
       const signer = await provider.getSigner();
       const c = new ethers.Contract(contractAddress, SUBSCRIBE_ABI, signer);
-      const tx = await c.renew();
-      return tx.hash;
+      return c.renew();
     }
 
     async function refreshOnchainStatus(){
@@ -460,41 +455,51 @@
       return flow;
     }
 
-    // ✅ verifica saldos do endereço do input (QUALQUER carteira)
+    // ✅ Novo: fluxo automático pós-confirmação
+    async function syncAndRefreshUI(){
+      try{
+        const sync = await assinaturaApi.syncSubscription();
+        const me = await apiGetMe();
+        setStatusUI(me);
+        await refreshOnchainStatus();
+        return { sync, me };
+      }catch(e){
+        // não quebra o fluxo, mas informa
+        toast('Confirmação OK, mas não consegui sincronizar automaticamente. Use "Atualizar status".', 'error');
+        throw e;
+      }
+    }
+
+    // ✅ verifica saldos do endereço do input (sempre com conta ativa MetaMask)
     async function refreshBalancesForInputWallet(){
-  await apiGetMe();
+      await apiGetMe();
 
-  // ✅ usa sempre a conta ativa do MetaMask (a mesma que assina)
-  if (!window.ethereum) throw new Error('MetaMask não detectado.');
-  await ensureBsc();
-  const selected = await connectAndGetAccount(); // abre popup se precisar
+      if (!window.ethereum) throw new Error('MetaMask não detectado.');
+      await ensureBsc();
+      const selected = await connectAndGetAccount();
 
-  // preenche/corrige o campo para evitar confusão
-  ensureInputMatchesSelected(selected);
+      ensureInputMatchesSelected(selected);
 
-  const wallet = (document.getElementById('walletInput').value || '').trim();
-  if (!isValidAddress(wallet)) throw new Error('Carteira inválida.');
+      const wallet = (document.getElementById('walletInput').value || '').trim();
+      if (!isValidAddress(wallet)) throw new Error('Carteira inválida.');
 
-  const contractInfo = await loadContractInfo();
-  const tokenAddress = contractInfo?.token || contractInfo?.USDT_ADDRESS || null;
-  if (!tokenAddress || !isValidAddress(tokenAddress)) throw new Error('Token USDT indisponível.');
+      const contractInfo = await loadContractInfo();
+      const tokenAddress = contractInfo?.token || contractInfo?.USDT_ADDRESS || null;
+      if (!tokenAddress || !isValidAddress(tokenAddress)) throw new Error('Token USDT indisponível.');
 
-  const b = await readBalances({ walletAddress: wallet, tokenAddress });
-  showBalancesBox({
-    bnb: b.bnb,
-    usdt: b.usdt,
-    hintText: 'Saldos da conta ativa no MetaMask (BNB Chain).'
-  });
+      const b = await readBalances({ walletAddress: wallet, tokenAddress });
+      showBalancesBox({
+        bnb: b.bnb,
+        usdt: b.usdt,
+        hintText: 'Saldos da conta ativa no MetaMask (BNB Chain).'
+      });
 
-  return { wallet, tokenAddress, balances: b };
-}
+      return { wallet, tokenAddress, balances: b };
+    }
 
-    // ✅ mantém a lógica original de UX, mas garante que na hora de assinar
-    // a conta do MetaMask seja a que realmente vai pagar
     function ensureInputMatchesSelected(selected){
       const typed = (document.getElementById('walletInput').value || '').trim();
       if (isValidAddress(typed) && typed.toLowerCase() !== selected.toLowerCase()){
-        // não quebra: avisa e corrige
         toast('A conta ativa no MetaMask é diferente da carteira do campo. Vou usar a conta ativa para assinar.', 'error');
         setWalletInput(selected);
       } else if (!typed) {
@@ -539,7 +544,6 @@
         await loadContractInfo();
         await refreshOnchainStatus();
 
-        // ✅ se já estiver conectado, tenta espelhar a conta (sem forçar)
         const connected = await getConnectedAccount();
         if (connected && !document.getElementById('walletInput').value.trim()){
           setWalletInput(connected);
@@ -569,7 +573,6 @@
       try{
         await apiGetMe();
 
-        // ✅ salvar o que está no campo (mantém seu comportamento atual)
         const wallet = (document.getElementById('walletInput').value || '').trim();
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (começa com 0x...).');
 
@@ -585,7 +588,6 @@
       }
     });
 
-    // ✅ Verificar saldos: agora funciona para QUALQUER carteira colada no campo
     document.getElementById('btnCheck')?.addEventListener('click', async ()=>{
       try{
         await refreshBalancesForInputWallet();
@@ -606,6 +608,7 @@
       }
     });
 
+    // ✅ SUBSCRIBE (100% automático)
     document.getElementById('btnSubscribe')?.addEventListener('click', async ()=>{
       try{
         await apiGetMe();
@@ -618,12 +621,9 @@
         await ensureBsc();
         await refreshNetBadge();
 
-        // ✅ sempre assina com a conta ativa no MetaMask
         const selected = await connectAndGetAccount();
         ensureInputMatchesSelected(selected);
 
-        // ✅ usa a carteira do campo como "carteira da conta" no backend,
-        // mas garantimos que ela está igual ao selected (ou corrigimos)
         const wallet = (document.getElementById('walletInput').value || '').trim();
         if (!isValidAddress(wallet)) throw new Error('Cole um endereço válido (0x...).');
 
@@ -640,7 +640,7 @@
           throw new Error('Contrato/token inválidos no backend.');
         }
 
-        // ✅ checagem de saldo via RPC público (não depende MetaMask)
+        // checagem de saldo via RPC público
         const bal = await readBalances({ walletAddress: wallet, tokenAddress });
         const usdtRaw = BigInt(bal.usdtRaw);
 
@@ -655,29 +655,38 @@
           return;
         }
 
-        // ✅ allowance via RPC público
+        // allowance via RPC público
         const allowance = await readAllowance({ walletAddress: wallet, tokenAddress, spender: contractAddress });
         const allow = BigInt(allowance.toString());
 
         if (allow < total) {
           toast('Confirme a autorização (approve) no MetaMask...');
-          const h1 = await sendApprove({ tokenAddress, spender: contractAddress, amount: total });
-          showTx(h1);
-          toast('Approve enviado. Agora confirme a assinatura (subscribe)...');
+          const tx1 = await sendApproveTx({ tokenAddress, spender: contractAddress, amount: total });
+          showTx(tx1.hash);
+          toast('Approve enviado. Aguardando confirmar...');
+          const r1 = await tx1.wait();
+          if (!r1 || r1.status !== 1) throw new Error('Approve falhou.');
+          toast('Approve confirmado. Agora confirme a assinatura (subscribe)...');
         } else {
           toast('Approve já está OK. Indo para assinatura (subscribe)...');
         }
 
-        const h2 = await sendSubscribe({ contractAddress, referrer });
-        showTx(h2);
-        toast('Subscribe enviado! Aguarde confirmar na rede e clique em "Atualizar status".');
+        const tx2 = await sendSubscribeTx({ contractAddress, referrer });
+        showTx(tx2.hash);
+        toast('Subscribe enviado. Aguardando confirmação na rede...');
+        const r2 = await tx2.wait();
+        if (!r2 || r2.status !== 1) throw new Error('Subscribe falhou.');
 
-        await refreshOnchainStatus();
+        toast('Confirmado! Sincronizando assinatura no sistema...');
+        await syncAndRefreshUI();
+
+        toast('Assinatura ativada com sucesso! ✅');
       }catch(err){
         toast(err?.message || 'Não foi possível ativar a assinatura.', 'error');
       }
     });
 
+    // ✅ RENEW (100% automático)
     document.getElementById('btnRenew')?.addEventListener('click', async ()=>{
       try{
         await apiGetMe();
@@ -703,11 +712,17 @@
         if (!caddr || !isValidAddress(caddr)) throw new Error('Endereço do contrato inválido.');
 
         toast('Confirme a renovação (renew) no MetaMask...');
-        const h = await sendRenew({ contractAddress: caddr });
-        showTx(h);
-        toast('Renew enviado! Aguarde confirmar e clique em "Atualizar status".');
+        const tx = await sendRenewTx({ contractAddress: caddr });
+        showTx(tx.hash);
 
-        await refreshOnchainStatus();
+        toast('Renew enviado. Aguardando confirmação na rede...');
+        const r = await tx.wait();
+        if (!r || r.status !== 1) throw new Error('Renew falhou.');
+
+        toast('Confirmado! Sincronizando assinatura no sistema...');
+        await syncAndRefreshUI();
+
+        toast('Renovação registrada e assinatura sincronizada ✅');
       }catch(err){
         toast(err?.message || 'Falha ao renovar.', 'error');
       }
